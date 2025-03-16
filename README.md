@@ -1,105 +1,146 @@
-# BS4 Template Generator
+# BS4 Template Generator (bs4-temp-gen)
 
-![BS4 Template Generator](https://img.shields.io/badge/Python-3.x-blue.svg)
-![BeautifulSoup](https://img.shields.io/badge/BeautifulSoup-4-green.svg)
-![Selenium](https://img.shields.io/badge/Selenium-ChromeDriver-yellow.svg)
-![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)
+![Python](https://img.shields.io/badge/Python-3.x-blue.svg) ![BeautifulSoup](https://img.shields.io/badge/BeautifulSoup-4-green.svg) ![Selenium](https://img.shields.io/badge/Selenium-WebScraping-yellow.svg)
 
 ## Overview
-The **BS4 Template Generator** is an advanced web scraping utility that extracts common HTML structures from multiple webpages and generates reusable **BeautifulSoup 4** (BS4) templates. It integrates **Selenium** for bypassing Cloudflare protections and supports multiple scraping strategies.
+**bs4-temp-gen** is an advanced web scraping and template generation tool that automates crawling, extracting, and analyzing HTML structures from web pages. It utilizes **BeautifulSoup**, **Selenium**, and **Requests** to handle both static and dynamic content, generating reusable BS4 parsing templates based on recurring patterns found across multiple pages.
 
 ## Features
-- **Automated HTML structure extraction** using `BeautifulSoup4`.
-- **Smart web crawling** with `requests` and `Selenium` fallback.
-- **Cloudflare bypass support** via headless Chrome.
-- **Multi-language support** (10+ languages).
-- **Efficient caching** to prevent redundant downloads.
-- **Logging and Debugging** with structured logs.
-- **Customizable keyword-based scraping**.
-- **Parallel downloading** with request retries.
-- **BS4 template generation** for extracted data.
+- **Automated Web Crawling:** Supports breadth-first (BFS) and depth-first (DFS) crawling strategies.
+- **Parallel Processing:** Multithreading with configurable workers for faster data collection.
+- **Cloudflare Bypass:** Detects and circumvents Cloudflare-protected pages using Selenium.
+- **Content Extraction:** Identifies and normalizes common and variable HTML patterns.
+- **Configurable Keyword Filtering:** Filters relevant pages using a customizable keyword list.
+- **Caching Mechanism:** Saves and reuses previous results to optimize performance.
+- **Customizable Output:** Generates structured BS4 templates for easy data extraction.
+- **Verbose Logging:** Adjustable console verbosity levels (`off`, `v`, `vv`, `vvv`, `infinite`).
 
 ## Installation
+### Prerequisites
+Ensure you have the following installed:
+- Python 3.x
+- Google Chrome & ChromeDriver (for Selenium)
+- Required Python packages (install with `pip`)
 
-### Requirements
-Ensure you have **Python 3.7+** installed.
-
-#### 1. Clone the repository
+### Setup
+Clone the repository:
 ```bash
 git clone https://github.com/DensenDeluxe/bs4-temp-gen.git
 cd bs4-temp-gen
 ```
 
-#### 2. Install dependencies
+Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-#### 3. Install ChromeDriver (for Selenium support)
-- Download ChromeDriver matching your **Chrome version** from [here](https://sites.google.com/chromium.org/driver/).
-- Place it in a directory included in your `PATH` or specify its location.
-
 ## Usage
-
-### Running the Script
-To generate a BS4 template, simply run:
+Run the script with customizable options:
 ```bash
-python bs4-temp-gen.py
+python bs4-temp-gen.py --output template.py --strategy bfs --max-pages 100 --max-workers 5
 ```
 
-### Interactive Mode
-The script will prompt you for a **target URL**:
-```plaintext
-Please enter the project URL: https://example.com
-```
-The generator will automatically:
-1. Crawl the provided URL.
-2. Extract common HTML structures.
-3. Generate a reusable `BeautifulSoup` parsing template.
+### Command-Line Arguments
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `--strategy` | Crawling strategy (`bfs` or `dfs`) | `bfs` |
+| `--max-pages` | Maximum pages to crawl (`-1` for infinite) | `100` |
+| `--max-depth` | Maximum crawl depth (`-1` for infinite) | `-1` |
+| `--max-workers` | Number of concurrent threads | `5` |
+| `--no-delay` | Disable random request delays | `False` |
+| `--selenium-only` | Force Selenium for all requests | `False` |
+| `--use-keywords` | Filter pages based on `bs4-search-items.txt` | `False` |
+| `--page-timeout` | HTTP request timeout in seconds | `10` |
+| `--selenium-timeout` | Selenium page load timeout in seconds | `15` |
+| `--retry-count` | Number of retry attempts for failed requests | `3` |
+| `--no-cache` | Disable caching and force re-crawl | `False` |
+| `--project-dir` | Directory for storing project data | `projects` |
+| `--keyword-file` | Keyword list file | `bs4-search-items.txt` |
+| `--output` | Output file for BS4 template | `bs4code.txt` |
+| `--verbose` | Console output verbosity (`off`, `v`, `vv`, `vvv`, `infinite`) | `vvv` |
 
-### Output
-Generated templates are saved in the **project directory**:
-```plaintext
-projects/<domain>/bs4code.txt
+### Example Usage
+#### Basic Crawling
+```bash
+python bs4-temp-gen.py --output template.py --strategy bfs
 ```
 
-## Example
-A generated **BS4 parsing template**:
+#### Crawling with Keywords Filtering
+```bash
+python bs4-temp-gen.py --use-keywords --keyword-file bs4-search-items.txt
+```
+
+#### Selenium-only Crawling
+```bash
+python bs4-temp-gen.py --selenium-only
+```
+
+#### High-Speed Parallel Crawling
+```bash
+python bs4-temp-gen.py --max-workers 10 --no-delay
+```
+
+## Output
+Upon completion, the script generates a structured BS4 parsing template, similar to:
 ```python
+"""
+Automatically generated BS4 template
+
+=== Common (static) HTML structure from all supported files ===
+<div class="product">
+    <h1 class="product-title">Product Name</h1>
+    <span class="price">$XX.XX</span>
+</div>
+
+=== Variable sections (data that differ) ===
+# <h1 class="product-title">Different Product Name</h1>
+# <span class="price">$YY.YY</span>
+
+=== Final extraction template ===
 from bs4 import BeautifulSoup
 
 def extract_relevant_data(html_content):
     soup = BeautifulSoup(html_content, 'lxml')
-    title = soup.find("h1", class_="page-title").get_text(strip=True)
+    title = soup.find("h1", class_="product-title").get_text(strip=True)
     price = soup.find("span", class_="price").get_text(strip=True)
-    return {"title": title, "price": price}
+    return title, price
+"""
 ```
 
-## Configuration
-
-### Changing Crawling Strategy
-By default, the script uses **BFS (Breadth-First Search)**. You can switch to **DFS (Depth-First Search)** by modifying:
-```python
-downloaded_files = crawl_website(project_url, strategy="dfs")
+## Logging & Debugging
+Enable detailed logs with:
+```bash
+python bs4-temp-gen.py --verbose vvv
 ```
 
-### Customizing Headers
-Modify headers inside `get_page_content()`:
-```python
-headers = {"User-Agent": "Mozilla/5.0 (compatible; BS4TemplateGenerator/1.0)"}
+Log levels:
+- **off** – Minimal output
+- **v** – Warnings and errors only
+- **vv** – Informational messages
+- **vvv** – Debug-level details
+- **infinite** – All logs with no filtering
+
+## File Structure
+```
+bs4-temp-gen/
+│── bs4-temp-gen.py      # Main script
+│── bs4-search-items.txt # List of keywords for filtering
+│── requirements.txt     # Required Python packages
+│── projects/            # Directory for storing crawled data
+└── README.md            # Documentation
 ```
 
 ## Contributing
-1. **Fork** the repository.
-2. Create a **feature branch** (`git checkout -b feature-name`).
-3. Commit your changes (`git commit -m 'Add new feature'`).
-4. Push to your branch (`git push origin feature-name`).
-5. Open a **Pull Request**.
+Pull requests and feature suggestions are welcome! Follow these steps to contribute:
+1. Fork the repository
+2. Create a new branch (`git checkout -b feature-branch`)
+3. Commit your changes (`git commit -m "Add new feature"`)
+4. Push to your fork (`git push origin feature-branch`)
+5. Create a pull request
 
 ## License
-This project is licensed under the **MIT License**.
+This project is licensed under the MIT License. See `LICENSE` for details.
 
-
----
-Made with ❤️ by *Daniel.
+## Author
+[DensenDeluxe](https://github.com/DensenDeluxe)
 
