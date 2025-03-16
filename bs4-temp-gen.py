@@ -170,7 +170,7 @@ translations = {
     }
 }
 
-# Ermittelt die Systemsprache; kann per CLI überschrieben werden
+# Ermittelt die Systemsprache; kann später per CLI überschrieben werden
 def get_language():
     lang = None
     try:
@@ -186,7 +186,7 @@ def get_language():
 
 LANG = get_language()
 
-# Globaler Lock für einen gemeinsamen Selenium-Driver
+# Globaler Lock für die Nutzung eines gemeinsamen Selenium-Drivers
 selenium_lock = threading.Lock()
 
 def animate_rainbow_header(ascii_art, duration=5, frame_interval=0.15):
@@ -264,7 +264,7 @@ def is_cloudflare_error_page(content):
     markers = ["cf-error-details", "Email Protection", "Cloudflare Ray ID:"]
     return any(marker in content for marker in markers)
 
-# Normalisiert HTML und entfernt variable Inhalte
+# Normalisiert HTML, entfernt variable Inhalte (z.B. IDs, Styles, JavaScript)
 def prepare_for_comparison(html_content):
     soup = BeautifulSoup(html_content, "lxml")
     for tag in soup(["script", "style"]):
@@ -277,7 +277,7 @@ def prepare_for_comparison(html_content):
     normalized = re.sub(r"\d+", "0", soup.prettify())
     return normalized
 
-# Erweiterte get_page_content mit Timeouts und Retry
+# Erweiterte get_page_content mit einstellbaren Timeouts und Retry-Zählung
 def get_page_content(url, session, headers, selenium_only=False, shared_driver=None, no_delay=False,
                      page_timeout=10, selenium_timeout=15, retry_count=3):
     if selenium_only:
@@ -287,7 +287,7 @@ def get_page_content(url, session, headers, selenium_only=False, shared_driver=N
             response = session.get(url, headers=headers, timeout=page_timeout)
             content = response.text
             if is_cloudflare_error_page(content):
-                logging.debug(f"Cloudflare detected for {url}. Switching to Selenium.")
+                logging.debug(f"Cloudflare protection detected for {url} via Requests. Switching to Selenium.")
                 return get_content_with_selenium(url, headers, shared_driver, selenium_timeout)
             return content
         except Exception as e:
@@ -296,7 +296,7 @@ def get_page_content(url, session, headers, selenium_only=False, shared_driver=N
                 time.sleep(2)
     return get_content_with_selenium(url, headers, shared_driver, selenium_timeout)
 
-# Angepasste Selenium-Funktion, ggf. mit geteiltem Driver
+# Angepasste get_content_with_selenium mit Timeout und ggf. gemeinsamem Driver
 def get_content_with_selenium(url, headers, shared_driver=None, selenium_timeout=15):
     if shared_driver:
         try:
@@ -308,7 +308,7 @@ def get_content_with_selenium(url, headers, shared_driver=None, selenium_timeout
                 content = shared_driver.page_source
             return content
         except Exception as e:
-            logging.error(f"Error with shared Selenium driver for {url}: {e}")
+            logging.error(f"Error fetching {url} with shared Selenium driver: {e}")
             return ""
     else:
         try:
@@ -326,10 +326,10 @@ def get_content_with_selenium(url, headers, shared_driver=None, selenium_timeout
             driver.quit()
             return content
         except Exception as e:
-            logging.error(f"Error with Selenium for {url}: {e}")
+            logging.error(f"Error fetching {url} with Selenium: {e}")
             return ""
 
-# Paralleles Crawling mit Unterstützung von max_depth (-1 = infinite)
+# Paralleles Crawling mit Unterstützung für max_depth (Wert -1 = infinite)
 def crawl_website(url, download_dir, strategy="bfs", sort_links=True, max_pages=-1, max_depth=-1, no_delay=False,
                   selenium_only=False, max_workers=5, page_timeout=10, selenium_timeout=15, retry_count=3,
                   keywords=None, use_keywords=False):
@@ -413,6 +413,7 @@ def crawl_website(url, download_dir, strategy="bfs", sort_links=True, max_pages=
                             new_links.append(absolute_url)
                     if sort_links:
                         new_links = prioritize_urls(new_links)
+                    # Bei max_depth nur Links hinzufügen, wenn der nächste Level erlaubt ist
                     for link in new_links:
                         if max_depth == -1 or current_depth + 1 <= max_depth:
                             to_visit.append((link, current_depth + 1))
@@ -593,17 +594,6 @@ def main(args):
     global LANG
     if args.lang:
         LANG = args.lang
-
-    # Set console verbosity based on --verbose
-    verbose_mapping = {
-        "off": logging.CRITICAL + 10,  # disables almost all logs
-        "v": logging.WARNING,
-        "vv": logging.INFO,
-        "vvv": logging.DEBUG,
-        "infinite": logging.NOTSET
-    }
-    logging.getLogger().setLevel(verbose_mapping[args.verbose])
-    
     final_header = print_matrix_header()
     logging.info(translations["header"][LANG])
     
@@ -688,42 +678,27 @@ def main(args):
     print(translations["elapsed_time"][LANG].format(elapsed))
 
 if __name__ == "__main__":
-    # Initiales Logging für Konsolenausgaben (wird später anhand von --verbose angepasst)
+    # Initiales Logging für Konsolenausgaben
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     parser = argparse.ArgumentParser(
         description="BS4 Template Generator with advanced crawling and extraction features"
     )
     parser.add_argument("--lang", choices=list(translations["header"].keys()), help="Language for output messages")
-    parser.add_argument("--verbose", choices=["off", "v", "vv", "vvv", "infinite"], default="vvv",
-                        help="Console verbosity level: off, v, vv, vvv, infinite")
-    parser.add_argument("--strategy", choices=["bfs", "dfs"], default="bfs",
-                        help="Crawling strategy: breadth-first (bfs) or depth-first (dfs)")
-    parser.add_argument("--max-pages", type=int, default=100,
-                        help="Maximum number of pages to crawl (-1 for infinite)")
-    parser.add_argument("--max-depth", type=int, default=-1,
-                        help="Maximum crawling depth (-1 for infinite)")
-    parser.add_argument("--max-workers", type=int, default=5,
-                        help="Number of concurrent workers for crawling")
-    parser.add_argument("--no-delay", action="store_true",
-                        help="Disable random delays during crawling")
-    parser.add_argument("--selenium-only", action="store_true",
-                        help="Force using Selenium for all page fetches")
-    parser.add_argument("--use-keywords", action="store_true",
-                        help="Use keywords from KEYWORDS_FILE to filter pages")
-    parser.add_argument("--page-timeout", type=int, default=10,
-                        help="Timeout (in seconds) for HTTP requests")
-    parser.add_argument("--selenium-timeout", type=int, default=15,
-                        help="Timeout (in seconds) for Selenium page loads")
-    parser.add_argument("--retry-count", type=int, default=3,
-                        help="Number of retries for failed HTTP requests")
-    parser.add_argument("--no-cache", action="store_true",
-                        help="Disable caching (force re-crawl and re-computation)")
-    parser.add_argument("--project-dir", type=str, default=DEFAULT_PROJECTS_DIR,
-                        help="Directory for storing project data")
-    parser.add_argument("--keyword-file", type=str, default=DEFAULT_KEYWORDS_FILE,
-                        help="File containing search keywords")
-    parser.add_argument("--output", type=str,
-                        help="Output file for the generated BS4 template")
+    parser.add_argument("--strategy", choices=["bfs", "dfs"], default="bfs", help="Crawling strategy: breadth-first (bfs) or depth-first (dfs)")
+    # Für max-pages und max-depth: -1 bedeutet infinite
+    parser.add_argument("--max-pages", type=int, default=100, help="Maximum number of pages to crawl (-1 for infinite)")
+    parser.add_argument("--max-depth", type=int, default=-1, help="Maximum crawling depth (-1 for infinite)")
+    parser.add_argument("--max-workers", type=int, default=5, help="Number of concurrent workers for crawling")
+    parser.add_argument("--no-delay", action="store_true", help="Disable random delays during crawling")
+    parser.add_argument("--selenium-only", action="store_true", help="Force using Selenium for all page fetches")
+    parser.add_argument("--use-keywords", action="store_true", help="Use keywords from KEYWORDS_FILE to filter pages")
+    parser.add_argument("--page-timeout", type=int, default=10, help="Timeout (in seconds) for HTTP requests")
+    parser.add_argument("--selenium-timeout", type=int, default=15, help="Timeout (in seconds) for Selenium page loads")
+    parser.add_argument("--retry-count", type=int, default=3, help="Number of retries for failed HTTP requests")
+    parser.add_argument("--no-cache", action="store_true", help="Disable caching (force re-crawl and re-computation)")
+    parser.add_argument("--project-dir", type=str, default=DEFAULT_PROJECTS_DIR, help="Directory for storing project data")
+    parser.add_argument("--keyword-file", type=str, default=DEFAULT_KEYWORDS_FILE, help="File containing search keywords")
+    parser.add_argument("--output", type=str, help="Output file for the generated BS4 template")
     args = parser.parse_args()
     
     try:
