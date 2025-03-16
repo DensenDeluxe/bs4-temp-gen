@@ -37,6 +37,10 @@ DEFAULT_KEYWORDS_FILE = "bs4-search-items.txt"
 selenium_lock = threading.Lock()
 
 def print_matrix_header():
+    """
+    Always prints the fixed ASCII art with a rainbow effect that can never be disabled.
+    Der Regenbogeneffekt wird per Zeichen erzielt.
+    """
     ascii_art = """
     
 888                   d8888         888                                                                     
@@ -50,12 +54,19 @@ def print_matrix_header():
                                                                  888                  888                   
                                                                  888             Y8b d88P                   
                                                                  888              "Y88P"  
-
-                                                                 
 """
-    # Print the ASCII art once at the very top. It remains fixed.
-    print(ascii_art)
-    return ascii_art
+    # Definiere die Farben für den Regenbogeneffekt
+    rainbow_colors = [Fore.RED, Fore.YELLOW, Fore.GREEN, Fore.CYAN, Fore.BLUE, Fore.MAGENTA]
+    colored_lines = []
+    # Wende den Regenbogeneffekt zeichenweise an
+    for line in ascii_art.splitlines():
+        colored_line = ""
+        for i, char in enumerate(line):
+            colored_line += rainbow_colors[i % len(rainbow_colors)] + char
+        colored_lines.append(colored_line)
+    colored_ascii_art = "\n".join(colored_lines)
+    print(colored_ascii_art)
+    return colored_ascii_art
 
 def load_keywords(filename):
     if os.path.exists(filename):
@@ -441,7 +452,7 @@ def configure_project_logging(project_path):
 
 def main(args):
     start_time = time.time()
-    # Print the fixed ASCII art at the top
+    # Print the fixed ASCII art at the very top with a rainbow effect that cannot be disabled
     print_matrix_header()
     logging.info("[MAIN] Starting BS4 Template Generator...")
     
