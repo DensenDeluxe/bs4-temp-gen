@@ -1,0 +1,478 @@
+title
+thc_value
+thc_unit
+cbd_value
+cbd_unit
+delivery_status
+image_url
+product_type
+product_url
+kultivar
+herkunft
+herkunftsland
+cannabistyp
+bestrahlung
+anbauer
+importeur
+extrakt_typ
+extrakt_basis
+apotheke
+apotheken_url
+preis
+price_unit
+Title
+Headline
+Designation
+Category
+Header
+Headline
+Theme
+Name Tag
+Subject
+Chapter Title
+Label
+THC_Value
+THC Content
+THC Concentration
+THC Percentage
+THC Level
+THC Proportion
+Cannabinoid Content
+THC Extract Value
+Total THC
+THC Measurement
+THC Potency
+THC_Unit
+THC Unit of Measurement
+THC Dosage
+THC Concentration Unit
+THC Measurement Scale
+THC Value Unit
+THC Content Unit
+THC Volume Percentage
+THC Mass Unit
+THC Percentage Indicator
+THC Active Ingredient Amount
+CBD_Value
+CBD Content
+CBD Concentration
+CBD Proportion
+CBD Level
+CBD Percentage
+Cannabidiol Content
+CBD Extract Value
+Total CBD
+CBD Measurement
+CBD Potency
+CBD_Unit
+CBD Unit of Measurement
+CBD Dosage
+CBD Concentration Unit
+CBD Measurement Scale
+CBD Value Unit
+CBD Content Unit
+CBD Volume Percentage
+CBD Mass Unit
+CBD Percentage Indicator
+CBD Active Ingredient Amount
+Delivery_Status
+Delivery Status
+Shipment Status
+Order Status
+Shipping Status
+Tracking Status
+Transport Status
+Package Status
+Tracking Information
+Order Progress
+Delivery Progress
+Product_Type
+Product Type
+Product Category
+Product Class
+Article Type
+Product Classification
+Product Group
+Merchandise Category
+Article Category
+Product Segment
+Product Family
+Product_URL
+Product Link
+Item URL
+Product Page
+Product Web Address
+Product URI
+Shop Link
+Item Website
+Product Page Link
+Direct Product Link
+E-commerce URL
+Cultivar
+Variety
+Strain
+Plant Line
+Hybrid
+Genotype
+Plant Clone
+Botanical Variety
+Subspecies
+Landrace
+Breeding Line
+Origin
+Source
+Ancestry
+Lineage
+Provenance
+Roots
+Background
+Discovery Location
+Region of Origin
+Genealogy
+Country of Origin
+Place of Origin
+Production Country
+Export Country
+Manufacturing Country
+Birthplace
+Source Country
+Shipping Country
+Region of Origin
+Domicile Country
+Procurement Country
+Cannabis Type
+Cannabis Variant
+Cannabis Strain
+Cannabis Lineage
+Cannabis Cultivar
+Genetic Type
+Hybrid Type
+Landrace Strain
+Cannabis Breeding
+Cannabis Classification
+Irradiation
+Radiation Treatment
+Radiotherapy
+Ionization
+Irradiation Process
+Exposure
+Gamma Irradiation
+UV Irradiation
+Radiation Therapy
+Radionuclide Therapy
+Electron Irradiation
+Grower
+Farmer
+Breeder
+Producer
+Cultivator
+Gardener
+Planter
+Agriculturalist
+Farm Operator
+Importer
+Importer Company
+Goods Importer
+Import Dealer
+Trading Company
+Distributor
+Wholesale Importer
+Supplier
+Import Firm
+Procurement Company
+Extract Type
+Extraction Type
+Extract Category
+Extract Concentration
+Extraction Method
+Active Compound Extract
+Cannabinoid Extract
+Oil Type
+Resin Type
+Processing Form
+Isolate or Full-Spectrum
+Extract Base
+Extraction Base
+Carrier Substance
+Solvent Base
+Starting Material
+Extract Foundation
+Base Oil
+Active Ingredient Carrier
+Extraction Medium
+Extraction Basis
+Raw Material for Extract
+Pharmacy
+Drugstore
+Medication Store
+Pharmaceutical Retailer
+Medicine Shop
+Medical Supply Store
+Health Product Store
+Online Pharmacy
+Pharmaceutical Distributor
+Hospital Pharmacy
+Compounding Pharmacy
+Pharmacy_URL
+Pharmacy Link
+Online Pharmacy URL
+Medicine Shop Link
+Pharmacy Web Address
+Pharma E-commerce URL
+Prescription Order Link
+Drug Store Webpage
+Pharmaceutical Website
+Online Medicine Store URL
+Price
+Cost
+Value
+Fee
+Rate
+Amount
+Selling Price
+Purchase Cost
+List Price
+Market Value
+Final Price
+Price_Unit
+Pricing Unit
+Cost Measure
+Price Per Unit
+Unit Price
+Tariff Unit
+Single Price
+Price Per Quantity
+Sales Price Unit
+Cost Per Piece
+Unit Cost
+Titel
+Überschrift
+Bezeichnung
+Rubrik
+Kopfzeile
+Schlagzeile
+Thema
+Namenstag
+Betreff
+Kapitelüberschrift
+Aufschrift
+THC_Value
+THC-Gehalt
+THC-Konzentration
+THC-Anteil
+THC-Level
+THC-Prozentsatz
+Cannabinoid-Gehalt
+THC-Extraktwert
+Gesamt-THC
+THC-Messwert
+THC-Potenz
+THC_Unit
+THC-Maßeinheit
+THC-Dosierung
+THC-Konzentrationseinheit
+THC-Messgröße
+THC-Werteinheit
+THC-Gehaltseinheit
+THC-Volumenprozent
+THC-Masseneinheit
+THC-Prozentangabe
+THC-Wirkstoffmenge
+CBD_Value
+CBD-Gehalt
+CBD-Konzentration
+CBD-Anteil
+CBD-Level
+CBD-Prozentsatz
+Cannabidiol-Gehalt
+CBD-Extraktwert
+Gesamt-CBD
+CBD-Messwert
+CBD-Potenz
+CBD_Unit
+CBD-Maßeinheit
+CBD-Dosierung
+CBD-Konzentrationseinheit
+CBD-Messgröße
+CBD-Werteinheit
+CBD-Gehaltseinheit
+CBD-Volumenprozent
+CBD-Masseneinheit
+CBD-Prozentangabe
+CBD-Wirkstoffmenge
+Delivery_Status
+Lieferstatus
+Sendungsstatus
+Bestellstatus
+Versandstatus
+Zustellstatus
+Transportstatus
+Paketstatus
+Sendungsverfolgung
+Auftragsstatus
+Lieferfortschritt
+Product_Type
+Produkttyp
+Produktkategorie
+Warenart
+Artikeltyp
+Produktklasse
+Warengruppe
+Erzeugniskategorie
+Artikelkategorie
+Produktsegment
+Produktgruppe
+Product_URL
+Produktlink
+Artikel-URL
+Produktseite
+Produktwebadresse
+Produkt-URI
+Shop-Link
+Artikelwebseite
+Produktseitenlink
+Direktlink zum Produkt
+E-Commerce-URL
+Kultivar
+Sorte
+Züchtung
+Varietät
+Pflanzenlinie
+Hybride
+Genotyp
+Pflanzenklon
+Botanische Sorte
+Unterart
+Landrasse
+Herkunft
+Ursprung
+Abstammung
+Quelle
+Entstehung
+Provenienz
+Wurzeln
+Hintergrund
+Fundort
+Herkunftsregion
+Genealogie
+Herkunftsland
+Ursprungsland
+Produktionsland
+Exportland
+Erzeugerland
+Geburtsland
+Quellland
+Lieferland
+Herkunftsregion
+Domizilland
+Beschaffungsland
+Cannabistyp
+Cannabisvariante
+Cannabissorte
+Cannabisstamm
+Cannabisstrain
+Pflanzenlinie
+Genotyp
+Hybride
+Landrasse
+Cannabiszüchtung
+Sortenklassifikation
+Bestrahlung
+Strahlenbehandlung
+Radiotherapie
+Ionisierung
+Bestrahlungsverfahren
+Exposition
+Gamma-Bestrahlung
+UV-Bestrahlung
+Strahlentherapie
+Radionuklidtherapie
+Elektronenbestrahlung
+Anbauer
+Landwirt
+Züchter
+Erzeuger
+Bauer
+Produzent
+Gärtner
+Kultivator
+Pflanzer
+Agrarwirt
+Farmbetreiber
+Importeur
+Einführer
+Warenimporteur
+Importhändler
+Handelsunternehmen
+Vertriebspartner
+Großhändler
+Zulieferer
+Importfirma
+Distributeur
+Beschaffungsunternehmen
+Extrakt-Typ
+Extraktionsart
+Extraktkategorie
+Konzentratform
+Extraktionsmethode
+Wirkstoffextrakt
+Cannabinoid-Extrakt
+Öltyp
+Harzart
+Verarbeitungsform
+Isolat oder Vollspektrum
+Extrakt-Basis
+Extraktionsgrundlage
+Trägerstoff
+Lösungsmittelbasis
+Ausgangsmaterial
+Grundstoff des Extrakts
+Basisöl
+Wirkstoffträger
+Extraktionsmedium
+Grundlage der Extraktion
+Rohstoff für den Extrakt
+Apotheke
+Drogerie
+Medikamentenladen
+Pharmazeutische Verkaufsstelle
+Arzneimittelgeschäft
+Sanitätshaus
+Heilmittelladen
+Medizinische Versandapotheke
+Pharmahandel
+Krankenhausapotheke
+Rezepturstelle
+Apotheken_URL
+Apothekenlink
+Online-Apotheke URL
+Medikamentenshop-Link
+Apotheken-Webadresse
+Pharma-Webshop-URL
+Rezeptbestellung-Online-Link
+Arzneimittel-Shop-Adresse
+Apotheken-Webseite
+Pharmazeutische E-Commerce-URL
+Versandapotheke-Link
+Preis
+Kosten
+Wert
+Gebühr
+Tarif
+Betrag
+Verkaufspreis
+Anschaffungskosten
+Listenpreis
+Marktwert
+Endpreis
+Price_Unit
+Preiseinheit
+Kostenmaß
+Preis pro Einheit
+Stückpreis
+Tarifeinheit
+Einzelpreis
+Preisangabe pro Menge
+Verkaufseinheitspreis
+Kosten pro Stück
+Einheitskosten
