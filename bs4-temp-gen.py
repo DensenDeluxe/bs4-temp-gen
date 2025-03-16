@@ -10,6 +10,7 @@ Features:
     - Umfassendes Logging & Performance-Monitoring (konsole & Datei, inklusive E-Mail-Benachrichtigung bei kritischen Fehlern)
     - Modularer Aufbau (Crawler, Parser, TemplateGenerator, ConfigManager)
     - Konfigurierbare Parameter über CLI und Konfigurationsdatei (YAML/JSON)
+    - **Interaktive Menüführung, Statusanzeigen und Fortschrittsbalken** (CLI, voll tastaturgesteuert)
     
 Dieses Skript wurde entwickelt, um Web-Scraping auf ein neues Level zu heben – robust, skalierbar und intelligent.
 """
@@ -44,6 +45,21 @@ try:
     import spacy
 except ImportError:
     spacy = None
+
+# Optional: prompt_toolkit für interaktive Menüs
+try:
+    from prompt_toolkit.shortcuts import radiolist_dialog
+    from prompt_toolkit import prompt as pt_prompt
+except ImportError:
+    radiolist_dialog = None
+    pt_prompt = input
+
+# Optional: rich für ansprechende Statusanzeigen und Fortschrittsbalken
+try:
+    from rich.console import Console
+    from rich.progress import Progress
+except ImportError:
+    Console = None
 
 # =============================================
 # Global Constants und Standard-Konfiguration
@@ -779,7 +795,72 @@ def print_matrix_header():
     return final_ascii_art
 
 # =============================================
-# Main-Funktion: Integration aller Komponenten
+# Interaktive Menüführung (prompt_toolkit)
+# =============================================
+
+def interactive_main_menu():
+    if radiolist_dialog:
+        choice = radiolist_dialog(
+            title="Main Menu",
+            text="Select an option:",
+            values=[
+                ("start", "Start Crawling and Generate Template"),
+                ("config", "Configure Settings"),
+                ("exit", "Exit")
+            ]
+        ).run()
+        return choice
+    else:
+        print("Main Menu:")
+        print("1. Start Crawling and Generate Template")
+        print("2. Configure Settings")
+        print("3. Exit")
+        choice = input("Enter choice: ")
+        if choice == "1":
+            return "start"
+        elif choice == "2":
+            return "config"
+        else:
+            return "exit"
+
+def interactive_config_menu(config):
+    # Language selection
+    if radiolist_dialog:
+        lang = radiolist_dialog(
+            title="Language Selection",
+            text="Select output language:",
+            values=[("en", "English"), ("de", "Deutsch"), ("fr", "French")]
+        ).run()
+    else:
+        lang = input("Enter language (en/de/fr): ")
+    config["lang"] = lang if lang in ["en", "de", "fr"] else "en"
+
+    # Crawling mode selection
+    if radiolist_dialog:
+        crawl_mode = radiolist_dialog(
+            title="Crawling Mode",
+            text="Select crawling mode:",
+            values=[("async", "Asynchronous Crawling (aiohttp)"), ("selenium", "Selenium Fallback")]
+        ).run()
+    else:
+        crawl_mode = input("Enter crawling mode (async/selenium): ")
+    config["crawler"]["use_selenium"] = True if crawl_mode == "selenium" else False
+
+    # Keyword filtering selection
+    if radiolist_dialog:
+        keyword_filter = radiolist_dialog(
+            title="Keyword Filtering",
+            text="Enable keyword filtering?",
+            values=[("yes", "Yes"), ("no", "No")]
+        ).run()
+    else:
+        keyword_filter = input("Use keyword filtering? (yes/no): ")
+    config["crawler"]["use_keywords"] = True if keyword_filter == "yes" else False
+
+    return config
+
+# =============================================
+# Main-Funktion: Integration aller Komponenten inkl. interaktiver Menüs
 # =============================================
 
 def main(args):
@@ -788,10 +869,22 @@ def main(args):
     config_manager = ConfigManager(args.config) if args.config else ConfigManager()
     config = config_manager.config
 
-    # Spracheinstellung
+    # Interaktives Hauptmenü
+    while True:
+        choice = interactive_main_menu()
+        if choice == "exit":
+            print("Exiting...")
+            sys.exit(0)
+        elif choice == "config":
+            config = interactive_config_menu(config)
+            print("Configuration updated.")
+        elif choice == "start":
+            break
+
+    # Spracheinstellung über interaktive Konfiguration (falls gesetzt)
     global LANG
-    if args.lang:
-        LANG = args.lang
+    if "lang" in config:
+        LANG = config["lang"]
 
     # Optional: spaCy-Modell initialisieren
     global nlp_model
@@ -804,8 +897,11 @@ def main(args):
     final_header = print_matrix_header()
     logging.info(translations["header"][LANG])
     
-    # Projekt-URL einlesen
-    project_url = input("Please enter the project URL: ").strip()
+    # Projekt-URL einlesen (interaktiv via prompt_toolkit, falls verfügbar)
+    if pt_prompt:
+        project_url = pt_prompt("Enter the project URL: ")
+    else:
+        project_url = input("Enter the project URL: ").strip()
     logging.debug(f"User entered project URL: {project_url}")
     domain = extract_domain(project_url)
     project_path = os.path.join(PROJECTS_DIR, domain)
@@ -831,14 +927,28 @@ def main(args):
 
     # Auswahl des Crawling-Mechanismus: asynchron vs. Selenium-Fallback
     downloaded_files = []
-    if config.get("crawler", "use_selenium", False):
-        logging.info("Using Selenium for crawling (synchronous fallback).")
-        downloaded_files = crawl_website_sync(project_url, download_dir, args, keywords)
+    # Verwende rich Statusanzeige, falls verfügbar
+    if Console:
+        console = Console()
+        with console.status("[bold green]Crawling in progress...[/bold green]"):
+            if config.get("crawler", "use_selenium", False):
+                logging.info("Using Selenium for crawling (synchronous fallback).")
+                downloaded_files = crawl_website_sync(project_url, download_dir, args, keywords)
+            else:
+                logging.info("Using asynchronous crawling with aiohttp.")
+                loop = asyncio.get_event_loop()
+                async_crawler = AsyncCrawler(project_url, download_dir, config, keywords)
+                downloaded_files = loop.run_until_complete(async_crawler.crawl())
     else:
-        logging.info("Using asynchronous crawling with aiohttp.")
-        loop = asyncio.get_event_loop()
-        async_crawler = AsyncCrawler(project_url, download_dir, config, keywords)
-        downloaded_files = loop.run_until_complete(async_crawler.crawl())
+        # Fallback, falls rich nicht verfügbar ist
+        if config.get("crawler", "use_selenium", False):
+            logging.info("Using Selenium for crawling (synchronous fallback).")
+            downloaded_files = crawl_website_sync(project_url, download_dir, args, keywords)
+        else:
+            logging.info("Using asynchronous crawling with aiohttp.")
+            loop = asyncio.get_event_loop()
+            async_crawler = AsyncCrawler(project_url, download_dir, config, keywords)
+            downloaded_files = loop.run_until_complete(async_crawler.crawl())
     
     if not downloaded_files:
         logging.error("No pages downloaded. Exiting.")
