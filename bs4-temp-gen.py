@@ -38,6 +38,7 @@ selenium_lock = threading.Lock()
 
 def print_matrix_header():
     ascii_art = """
+    
 888                   d8888         888                                                                     
 888                  d8P888         888                                                                     
 888                 d8P 888         888                                                                     
@@ -48,7 +49,9 @@ def print_matrix_header():
 88888P"   88888P'       888          "Y888 "Y8888  888  888  888 88888P"          "Y88888  "Y8888  888  888 
                                                                  888                  888                   
                                                                  888             Y8b d88P                   
-                                                                 888              "Y88P"                    
+                                                                 888              "Y88P"  
+
+                                                                 
 """
     # Print the ASCII art once at the very top. It remains fixed.
     print(ascii_art)
