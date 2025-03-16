@@ -27,7 +27,7 @@ Ensure you have **Python 3.7+** installed.
 #### 1. Clone the repository
 ```bash
 git clone https://github.com/DensenDeluxe/bs4-temp-gen.git
-cd bs4-template-gen
+cd bs4-temp-gen
 ```
 
 #### 2. Install dependencies
