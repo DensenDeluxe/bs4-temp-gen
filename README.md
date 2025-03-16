@@ -27,7 +27,7 @@ Welcome to the **BS4 Super-Crawler** – the Swiss Army knife for web scraping. 
 
 ### **1️⃣ Clone the Repository**
 ```bash
-git clone https://github.com/YOUR-USERNAME/bs4-super-crawler.git
+git clone https://github.com/DensenDeluxe/bs4-super-crawler.git
 cd bs4-super-crawler
 ```
 
