@@ -30,9 +30,9 @@ from selenium.webdriver.support import expected_conditions as EC
 # Colorama initialisieren (für farbige Konsolenausgaben)
 init(autoreset=True)
 
-# Standardwerte für Konfigurationen
-DEFAULT_PROJECTS_DIR = "projects"
-DEFAULT_KEYWORDS_FILE = "bs4-search-items.txt"
+# Globale Konfiguration – spätere Dateipfade werden in main() neu gesetzt
+PROJECTS_DIR = "projects"
+KEYWORDS_FILE = "bs4-search-items.txt"
 
 # Übersetzungsdictionary für Ausgaben (10 häufigste Sprachen)
 translations = {
@@ -91,7 +91,7 @@ translations = {
         "fr": "Aucun changement détecté – utilisation du cache.",
         "it": "Nessuna modifica rilevata – utilizzo dei dati cache.",
         "pt": "Nenhuma mudança detectada – usando dados em cache.",
-        "ru": "Изменений не обнаружено – используются Daten aus dem Cache.",
+        "ru": "Изменений не обнаружено – используются данные aus dem Cache.",
         "ja": "変更は検出されませんでした – キャッシュされたデータを使用します。",
         "ko": "변경 사항이 감지되지 않음 – 캐시된 데이터를 사용합니다.",
         "zh": "未检测到更改 – 使用缓存数据。"
@@ -170,7 +170,7 @@ translations = {
     }
 }
 
-# Ermittelt die Systemsprache; kann später per CLI überschrieben werden
+# Standardmäßig wird über locale die Sprache ermittelt – diese kann über Kommandozeilenoptionen überschrieben werden
 def get_language():
     lang = None
     try:
@@ -240,9 +240,9 @@ def extract_domain(url):
         domain = domain[4:]
     return domain
 
-def check_project_existence(url, project_dir):
+def check_project_existence(url):
     domain = extract_domain(url)
-    project_path = os.path.join(project_dir, domain)
+    project_path = os.path.join(PROJECTS_DIR, domain)
     exists = os.path.exists(project_path)
     return exists, project_path
 
@@ -264,47 +264,50 @@ def is_cloudflare_error_page(content):
     markers = ["cf-error-details", "Email Protection", "Cloudflare Ray ID:"]
     return any(marker in content for marker in markers)
 
-# Normalisiert HTML, entfernt variable Inhalte (z.B. IDs, Styles, JavaScript)
+# Neue Funktion: Normalisiert HTML für Vergleichszwecke (Entfernt variable Inhalte und Attribute)
 def prepare_for_comparison(html_content):
     soup = BeautifulSoup(html_content, "lxml")
+    # Entferne <script>- und <style>-Tags, die häufig dynamisch sind
     for tag in soup(["script", "style"]):
         tag.decompose()
+    # Entferne variable Attribute wie id, style, on* und data-*
     for tag in soup.find_all(True):
         attrs = list(tag.attrs.keys())
         for attr in attrs:
             if attr == "id" or attr == "style" or attr.startswith("on") or attr.startswith("data-"):
                 del tag.attrs[attr]
+    # Ersetze Zahlen durch einen Platzhalter, um z. B. Preise zu normalisieren
     normalized = re.sub(r"\d+", "0", soup.prettify())
     return normalized
 
-# Erweiterte get_page_content mit einstellbaren Timeouts und Retry-Zählung
-def get_page_content(url, session, headers, selenium_only=False, shared_driver=None, no_delay=False,
-                     page_timeout=10, selenium_timeout=15, retry_count=3):
+# Angepasste get_page_content mit Unterstützung für Selenium-only, geteilten Selenium-Driver und No-Delay
+def get_page_content(url, session, headers, selenium_only=False, shared_driver=None, no_delay=False):
     if selenium_only:
-        return get_content_with_selenium(url, headers, shared_driver, selenium_timeout)
-    for attempt in range(retry_count):
+        return get_content_with_selenium(url, headers, shared_driver)
+    MAX_RETRIES = 3
+    for attempt in range(MAX_RETRIES):
         try:
-            response = session.get(url, headers=headers, timeout=page_timeout)
+            response = session.get(url, headers=headers, timeout=10)
             content = response.text
             if is_cloudflare_error_page(content):
                 logging.debug(f"Cloudflare protection detected for {url} via Requests. Switching to Selenium.")
-                return get_content_with_selenium(url, headers, shared_driver, selenium_timeout)
+                return get_content_with_selenium(url, headers, shared_driver)
             return content
         except Exception as e:
             logging.warning(f"Attempt {attempt+1} for {url} failed: {e}")
             if not no_delay:
                 time.sleep(2)
-    return get_content_with_selenium(url, headers, shared_driver, selenium_timeout)
+    # Nach mehreren Fehlversuchen auf Selenium-Fallback
+    return get_content_with_selenium(url, headers, shared_driver)
 
-# Angepasste get_content_with_selenium mit Timeout und ggf. gemeinsamem Driver
-def get_content_with_selenium(url, headers, shared_driver=None, selenium_timeout=15):
+# Angepasste get_content_with_selenium mit Verwendung eines geteilten Selenium-Drivers (mit Lock)
+def get_content_with_selenium(url, headers, shared_driver=None):
     if shared_driver:
         try:
             with selenium_lock:
                 shared_driver.get(url)
-                WebDriverWait(shared_driver, selenium_timeout).until(
-                    lambda d: d.execute_script('return document.readyState') == 'complete'
-                )
+                # Verwende explizite Wartebedingung, bis die Seite vollständig geladen ist
+                WebDriverWait(shared_driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
                 content = shared_driver.page_source
             return content
         except Exception as e:
@@ -317,11 +320,9 @@ def get_content_with_selenium(url, headers, shared_driver=None, selenium_timeout
             options.add_argument("--disable-gpu")
             options.add_argument(f'user-agent={headers["User-Agent"]}')
             driver = webdriver.Chrome(options=options)
-            driver.set_page_load_timeout(selenium_timeout)
+            driver.set_page_load_timeout(15)
             driver.get(url)
-            WebDriverWait(driver, selenium_timeout).until(
-                lambda d: d.execute_script('return document.readyState') == 'complete'
-            )
+            WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
             content = driver.page_source
             driver.quit()
             return content
@@ -329,18 +330,17 @@ def get_content_with_selenium(url, headers, shared_driver=None, selenium_timeout
             logging.error(f"Error fetching {url} with Selenium: {e}")
             return ""
 
-# Paralleles Crawling mit Unterstützung für max_depth (Wert -1 = infinite)
-def crawl_website(url, download_dir, strategy="bfs", sort_links=True, max_pages=-1, max_depth=-1, no_delay=False,
-                  selenium_only=False, max_workers=5, page_timeout=10, selenium_timeout=15, retry_count=3,
-                  keywords=None, use_keywords=False):
+# Parallelisiertes Crawling mittels ThreadPoolExecutor
+def crawl_website(url, download_dir, strategy="bfs", sort_links=True, max_pages=100, no_delay=False,
+                  selenium_only=False, max_workers=5, keywords=None, use_keywords=False):
     domain = extract_domain(url)
     visited = set()
-    # to_visit enthält Tupel: (url, depth)
-    to_visit = [(url, 0)]
+    to_visit = [url]
     downloaded_files = []
+    # Shared session und (falls aktiviert) ein gemeinsamer Selenium-Driver
     session = requests.Session()
     retry_strategy = Retry(
-        total=retry_count,
+        total=3,
         status_forcelist=[429, 500, 502, 503, 504],
         allowed_methods=["HEAD", "GET", "OPTIONS"],
         backoff_factor=1
@@ -359,28 +359,29 @@ def crawl_website(url, download_dir, strategy="bfs", sort_links=True, max_pages=
             shared_driver = webdriver.Chrome(options=options)
         except Exception as e:
             logging.error(f"Error initializing shared Selenium driver: {e}")
-            selenium_only = False
-
+            selenium_only = False  # Fallback auf Requests
+    
     pbar = tqdm(desc=f"{Fore.GREEN}Downloading pages{Style.RESET_ALL}", ncols=80)
+    # Verwende ThreadPoolExecutor für parallele Anfragen
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        while to_visit and (max_pages == -1 or len(downloaded_files) < max_pages):
+        while to_visit and len(downloaded_files) < max_pages:
+            # Erstelle ein Batch von URLs
             batch = []
             while to_visit and len(batch) < max_workers:
-                url_item, depth = to_visit.pop(0) if strategy == "bfs" else to_visit.pop()
-                if url_item in visited:
-                    continue
-                batch.append((url_item, depth))
-                visited.add(url_item)
+                if strategy == "bfs":
+                    batch.append(to_visit.pop(0))
+                else:
+                    batch.append(to_visit.pop())
+            # Filtere bereits besuchte URLs
+            batch = [url for url in batch if url not in visited]
             if not batch:
                 continue
-            futures = {
-                executor.submit(
-                    get_page_content,
-                    url_item, session, headers, selenium_only, shared_driver, no_delay, page_timeout, selenium_timeout, retry_count
-                ): (url_item, depth) for (url_item, depth) in batch
-            }
+            for url_item in batch:
+                visited.add(url_item)
+            # Parallelisiere den Abruf
+            futures = {executor.submit(get_page_content, url_item, session, headers, selenium_only, shared_driver, no_delay): url_item for url_item in batch}
             for future in concurrent.futures.as_completed(futures):
-                current_url, current_depth = futures[future]
+                current_url = futures[future]
                 try:
                     content = future.result()
                 except Exception as exc:
@@ -389,6 +390,7 @@ def crawl_website(url, download_dir, strategy="bfs", sort_links=True, max_pages=
                 if not no_delay:
                     time.sleep(random.uniform(1, 3))
                 if content and not is_cloudflare_error_page(content):
+                    # Wenn Keywords-Filter aktiviert ist, überspringe Seiten ohne relevanten Content
                     if use_keywords and keywords:
                         if not any(kw.lower() in content.lower() for kw in keywords):
                             logging.debug(f"Skipping {current_url} due to keyword filter.")
@@ -413,11 +415,9 @@ def crawl_website(url, download_dir, strategy="bfs", sort_links=True, max_pages=
                             new_links.append(absolute_url)
                     if sort_links:
                         new_links = prioritize_urls(new_links)
-                    # Bei max_depth nur Links hinzufügen, wenn der nächste Level erlaubt ist
-                    for link in new_links:
-                        if max_depth == -1 or current_depth + 1 <= max_depth:
-                            to_visit.append((link, current_depth + 1))
-                    if max_pages != -1 and len(downloaded_files) >= max_pages:
+                    to_visit.extend(new_links)
+                    # Beende, wenn max_pages erreicht sind
+                    if len(downloaded_files) >= max_pages:
                         break
                 else:
                     logging.info(f"Ignored Cloudflare error page or empty content from {current_url}.")
@@ -438,6 +438,7 @@ def read_supported_files(directory):
         try:
             with open(file, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
+                # Verwende prepare_for_comparison zur Normalisierung
                 normalized_html = prepare_for_comparison(content)
                 html_lines = normalized_html.splitlines()
                 documents[file] = html_lines
@@ -591,19 +592,22 @@ def configure_project_logging(project_path):
 
 def main(args):
     start_time = time.time()
+    # Set language from CLI if provided
     global LANG
     if args.lang:
         LANG = args.lang
+    # Drucke Header
     final_header = print_matrix_header()
     logging.info(translations["header"][LANG])
     
     project_url = input("Please enter the project URL: ").strip()
     logging.debug(f"User entered project URL: {project_url}")
-    exists, project_path = check_project_existence(project_url, args.project_dir)
+    exists, project_path = check_project_existence(project_url)
     
+    # Alle projektbezogenen Dateien werden im Projektordner gespeichert.
     download_dir = os.path.join(project_path, "downloaded_mhtml")
     if not exists:
-        project_path = os.path.join(args.project_dir, extract_domain(project_url))
+        project_path = os.path.join(PROJECTS_DIR, extract_domain(project_url))
         create_project_structure(project_path)
         downloaded_files = crawl_website(
             project_url,
@@ -611,26 +615,24 @@ def main(args):
             strategy=args.strategy,
             sort_links=True,
             max_pages=args.max_pages,
-            max_depth=args.max_depth,
             no_delay=args.no_delay,
             selenium_only=args.selenium_only,
             max_workers=args.max_workers,
-            page_timeout=args.page_timeout,
-            selenium_timeout=args.selenium_timeout,
-            retry_count=args.retry_count,
-            keywords=load_keywords(args.keyword_file) if args.use_keywords else None,
+            keywords=load_keywords(KEYWORDS_FILE) if args.use_keywords else None,
             use_keywords=args.use_keywords
         )
         if not downloaded_files:
             logging.error("No pages downloaded. Exiting.")
             sys.exit(1)
     else:
+        # Falls das Projekt bereits existiert, gehe davon aus, dass bereits gecrawlt wurde.
         downloaded_files = [os.path.join(download_dir, f) for f in os.listdir(download_dir)]
     
+    # Reconfigure Logging to file in project folder
     configure_project_logging(project_path)
     global CACHE_FILE, OUTPUT_FILE
     CACHE_FILE = os.path.join(project_path, "cache.pkl")
-    OUTPUT_FILE = args.output if args.output else os.path.join(project_path, "bs4code.txt")
+    OUTPUT_FILE = os.path.join(project_path, "bs4code.txt")
     
     if not os.path.exists(download_dir):
         logging.error("Directory not found in project. Exiting.")
@@ -641,7 +643,7 @@ def main(args):
         logging.error("No supported files found. Exiting.")
         sys.exit(1)
     
-    cache = load_cache() if not args.no_cache else {}
+    cache = load_cache()
     cached_info = cache.get("file_info", {})
     cached_common = cache.get("common_seq", None)
     cached_variables = cache.get("variable_lines", None)
@@ -661,8 +663,7 @@ def main(args):
         cache["file_info"] = update_cache_info(documents)
         cache["common_seq"] = common_seq
         cache["variable_lines"] = variable_lines
-        if not args.no_cache:
-            save_cache(cache)
+        save_cache(cache)
     
     logging.debug("Generating BS4 code template.")
     bs4_template = generate_bs4_template(common_seq, variable_lines)
@@ -680,25 +681,14 @@ def main(args):
 if __name__ == "__main__":
     # Initiales Logging für Konsolenausgaben
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    parser = argparse.ArgumentParser(
-        description="BS4 Template Generator with advanced crawling and extraction features"
-    )
+    parser = argparse.ArgumentParser(description="BS4 Template Generator with advanced crawling and extraction features")
     parser.add_argument("--lang", choices=list(translations["header"].keys()), help="Language for output messages")
     parser.add_argument("--strategy", choices=["bfs", "dfs"], default="bfs", help="Crawling strategy: breadth-first (bfs) or depth-first (dfs)")
-    # Für max-pages und max-depth: -1 bedeutet infinite
-    parser.add_argument("--max-pages", type=int, default=100, help="Maximum number of pages to crawl (-1 for infinite)")
-    parser.add_argument("--max-depth", type=int, default=-1, help="Maximum crawling depth (-1 for infinite)")
+    parser.add_argument("--max-pages", type=int, default=100, help="Maximum number of pages to crawl")
     parser.add_argument("--max-workers", type=int, default=5, help="Number of concurrent workers for crawling")
     parser.add_argument("--no-delay", action="store_true", help="Disable random delays during crawling")
     parser.add_argument("--selenium-only", action="store_true", help="Force using Selenium for all page fetches")
     parser.add_argument("--use-keywords", action="store_true", help="Use keywords from KEYWORDS_FILE to filter pages")
-    parser.add_argument("--page-timeout", type=int, default=10, help="Timeout (in seconds) for HTTP requests")
-    parser.add_argument("--selenium-timeout", type=int, default=15, help="Timeout (in seconds) for Selenium page loads")
-    parser.add_argument("--retry-count", type=int, default=3, help="Number of retries for failed HTTP requests")
-    parser.add_argument("--no-cache", action="store_true", help="Disable caching (force re-crawl and re-computation)")
-    parser.add_argument("--project-dir", type=str, default=DEFAULT_PROJECTS_DIR, help="Directory for storing project data")
-    parser.add_argument("--keyword-file", type=str, default=DEFAULT_KEYWORDS_FILE, help="File containing search keywords")
-    parser.add_argument("--output", type=str, help="Output file for the generated BS4 template")
     args = parser.parse_args()
     
     try:
