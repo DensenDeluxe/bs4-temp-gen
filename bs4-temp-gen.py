@@ -10,7 +10,7 @@ Features:
     - Umfassendes Logging & Performance-Monitoring (konsole & Datei, inklusive E-Mail-Benachrichtigung bei kritischen Fehlern)
     - Modularer Aufbau (Crawler, Parser, TemplateGenerator, ConfigManager)
     - Konfigurierbare Parameter über CLI und Konfigurationsdatei (YAML/JSON)
-    - **Interaktive Menüführung, Statusanzeigen und Fortschrittsbalken** (CLI, voll tastaturgesteuert)
+    - Interaktive Menüführung, Statusanzeigen und Fortschrittsbalken (CLI, voll tastaturgesteuert)
     
 Dieses Skript wurde entwickelt, um Web-Scraping auf ein neues Level zu heben – robust, skalierbar und intelligent.
 """
@@ -279,14 +279,14 @@ class LoggerManager:
         # Entferne alle vorhandenen Handler
         for handler in self.logger.handlers[:]:
             self.logger.removeHandler(handler)
-        self.logger.setLevel(getattr(logging, self.config.get("logging", "level", "DEBUG")))
+        self.logger.setLevel(getattr(logging, self.config.get("logging", {}).get("level", "DEBUG")))
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        if self.config.get("logging", "console", True):
+        if self.config.get("logging", {}).get("console", True):
             console_handler = logging.StreamHandler(sys.stdout)
             console_handler.setFormatter(formatter)
             self.logger.addHandler(console_handler)
-        if self.config.get("logging", "file", True):
-            log_file = os.path.join(self.project_path, self.config.get("logging", "log_filename", "log.txt"))
+        if self.config.get("logging", {}).get("file", True):
+            log_file = os.path.join(self.project_path, self.config.get("logging", {}).get("log_filename", "log.txt"))
             file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
             file_handler.setFormatter(formatter)
             self.logger.addHandler(file_handler)
@@ -593,7 +593,7 @@ class AsyncCrawler:
         self.to_visit = asyncio.Queue()
         self.keywords = keywords
         self.domain = extract_domain(start_url)
-        self.sem = asyncio.Semaphore(config.get("crawler", "concurrency", 10))
+        self.sem = asyncio.Semaphore(self.config.get("crawler", {}).get("concurrency", 10))
         self.session = None
         self.results = []
     
@@ -615,7 +615,6 @@ class AsyncCrawler:
                     if is_cloudflare_error_page(text):
                         logging.debug(f"Cloudflare protection detected for {url}.")
                         return None
-                    # Optional: Hier könnte man auch JSON/XML direkt parsen
                     return (url, text, content_type)
             except Exception as e:
                 logging.warning(f"Async fetch error for {url}: {e}")
@@ -631,13 +630,11 @@ class AsyncCrawler:
             result = await self.fetch(url)
             if result:
                 url, content, ctype = result
-                # Keyword-Filterung, falls aktiviert
-                if self.config.get("crawler", "use_keywords", False) and self.keywords:
+                if self.config.get("crawler", {}).get("use_keywords", False) and self.keywords:
                     if not any(kw.lower() in content.lower() for kw in self.keywords):
                         logging.debug(f"Skipping {url} due to keyword filter.")
                         self.to_visit.task_done()
                         continue
-                # Speichere den Inhalt als Datei
                 index = len(self.results) + 1
                 filename = os.path.join(self.download_dir, f"page_{index}.mhtml")
                 try:
@@ -647,14 +644,12 @@ class AsyncCrawler:
                     logging.debug(f"Downloaded {url} to {filename}.")
                 except Exception as e:
                     logging.error(f"Error writing file {filename}: {e}")
-                # Extrahiere neue Links
                 new_links = self.extract_links(content, url)
                 for link in new_links:
                     if extract_domain(link) == self.domain and link not in self.visited:
                         await self.to_visit.put(link)
             self.to_visit.task_done()
-            # Abbruchbedingung: max_pages erreicht
-            if len(self.results) >= self.config.get("crawler", "max_pages", 100):
+            if len(self.results) >= self.config.get("crawler", {}).get("max_pages", 100):
                 break
 
     def extract_links(self, html, base_url):
@@ -665,7 +660,7 @@ class AsyncCrawler:
             absolute_url = urljoin(base_url, href)
             if absolute_url not in self.visited:
                 links.append(absolute_url)
-        if self.config.get("crawler", "strategy", "bfs") == "bfs":
+        if self.config.get("crawler", {}).get("strategy", "bfs") == "bfs":
             links = prioritize_urls(links)
         return links
 
@@ -673,7 +668,7 @@ class AsyncCrawler:
         await self.init_session()
         await self.to_visit.put(self.start_url)
         workers = []
-        for _ in range(self.config.get("crawler", "concurrency", 10)):
+        for _ in range(self.config.get("crawler", {}).get("concurrency", 10)):
             worker_task = asyncio.create_task(self.worker())
             workers.append(worker_task)
         await self.to_visit.join()
@@ -732,7 +727,6 @@ def get_page_content(url, session, headers, selenium_only=False, shared_driver=N
             logging.warning(f"Attempt {attempt+1} for {url} failed: {e}")
             if not no_delay:
                 time.sleep(2)
-    # Fallback:
     return get_content_with_selenium(url, headers, shared_driver)
 
 # =============================================
@@ -779,6 +773,7 @@ def animate_rainbow_header(ascii_art, duration=5, frame_interval=0.15):
 
 def print_matrix_header():
     ascii_art = """
+    
 888                   d8888         888                                                                     
 888                  d8P888         888                                                                     
 888                 d8P 888         888                                                                     
@@ -789,7 +784,9 @@ def print_matrix_header():
 88888P"   88888P'       888          "Y888 "Y8888  888  888  888 88888P"          "Y88888  "Y8888  888  888 
                                                                  888                  888                   
                                                                  888             Y8b d88P                   
-                                                                 888              "Y88P"                   
+                                                                 888              "Y88P"    
+
+                                                                 
 """
     final_ascii_art = animate_rainbow_header(ascii_art, duration=5, frame_interval=0.15)
     return final_ascii_art
@@ -888,8 +885,8 @@ def main(args):
 
     # Optional: spaCy-Modell initialisieren
     global nlp_model
-    if config.get("nlp", "enabled", True):
-        nlp_model = init_nlp(config.get("nlp", "model", "en_core_web_sm"))
+    if config.get("nlp", {}).get("enabled", True):
+        nlp_model = init_nlp(config.get("nlp", {}).get("model", "en_core_web_sm"))
     else:
         nlp_model = None
 
@@ -920,10 +917,10 @@ def main(args):
     # Cache-Dateien definieren
     global CACHE_FILE, OUTPUT_FILE
     CACHE_FILE = os.path.join(project_path, "cache.pkl")
-    OUTPUT_FILE = os.path.join(project_path, config.get("output", "template_filename", "bs4code.txt"))
+    OUTPUT_FILE = os.path.join(project_path, config.get("output", {}).get("template_filename", "bs4code.txt"))
     
     # Keywords laden, falls aktiviert
-    keywords = load_keywords(KEYWORDS_FILE) if config.get("crawler", "use_keywords", False) else None
+    keywords = load_keywords(KEYWORDS_FILE) if config.get("crawler", {}).get("use_keywords", False) else None
 
     # Auswahl des Crawling-Mechanismus: asynchron vs. Selenium-Fallback
     downloaded_files = []
@@ -931,7 +928,7 @@ def main(args):
     if Console:
         console = Console()
         with console.status("[bold green]Crawling in progress...[/bold green]"):
-            if config.get("crawler", "use_selenium", False):
+            if config.get("crawler", {}).get("use_selenium", False):
                 logging.info("Using Selenium for crawling (synchronous fallback).")
                 downloaded_files = crawl_website_sync(project_url, download_dir, args, keywords)
             else:
@@ -940,8 +937,7 @@ def main(args):
                 async_crawler = AsyncCrawler(project_url, download_dir, config, keywords)
                 downloaded_files = loop.run_until_complete(async_crawler.crawl())
     else:
-        # Fallback, falls rich nicht verfügbar ist
-        if config.get("crawler", "use_selenium", False):
+        if config.get("crawler", {}).get("use_selenium", False):
             logging.info("Using Selenium for crawling (synchronous fallback).")
             downloaded_files = crawl_website_sync(project_url, download_dir, args, keywords)
         else:
@@ -1095,7 +1091,6 @@ def crawl_website_sync(url, download_dir, args, keywords):
 # =============================================
 
 if __name__ == "__main__":
-    # Initiales Logging für Konsolenausgaben (bevor LoggerManager neu konfiguriert wird)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     parser = argparse.ArgumentParser(
         description="Advanced BS4 Template Generator with asynchronous crawling, NLP integration, multi-format support, and extensive logging."
