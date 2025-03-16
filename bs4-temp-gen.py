@@ -2,6 +2,7 @@
 import os
 import sys
 import time
+import locale
 import pickle
 import logging
 import difflib
@@ -19,21 +20,173 @@ from colorama import init, Fore, Style
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# For headless browser usage
+# Für Headless-Browser
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
-# Initialize Colorama for colored console output
+# Colorama initialisieren (für farbige Konsolenausgaben)
 init(autoreset=True)
 
-# Standard configuration values
+# Standardwerte für Konfigurationen
 DEFAULT_PROJECTS_DIR = "projects"
 DEFAULT_KEYWORDS_FILE = "bs4-search-items.txt"
 
-# Global lock for shared Selenium driver
+# Übersetzungsdictionary für Ausgaben (10 häufigste Sprachen)
+translations = {
+    "header": {
+        "en": "Starting BS4 Template Generator...",
+        "de": "Starte BS4-Template-Generator...",
+        "es": "Iniciando el Generador de Plantillas BS4...",
+        "fr": "Démarrage du Générateur de Template BS4...",
+        "it": "Avvio del Generatore di Template BS4...",
+        "pt": "Iniciando o Gerador de Template BS4...",
+        "ru": "Запуск генератора шаблонов BS4...",
+        "ja": "BS4テンプレートジェネレーターを起動しています...",
+        "ko": "BS4 템플릿 생성기를 시작합니다...",
+        "zh": "启动 BS4 模板生成器..."
+    },
+    "read_files": {
+        "en": "Reading all downloaded and supported file formats...",
+        "de": "Liest alle heruntergeladenen und unterstützten Dateiformate ein...",
+        "es": "Leyendo todos los formatos de archivo descargados...",
+        "fr": "Lecture de tous les formats de fichiers téléchargés...",
+        "it": "Lettura di tutti i formati di file scaricati...",
+        "pt": "Lendo todos os formatos de arquivo baixados...",
+        "ru": "Чтение всех загруженных und unterstützten Formate...",
+        "ja": "すべてのダウンロード済みファイル形式を読み込みます...",
+        "ko": "다운로드된 모든 파일 형식을 읽습니다...",
+        "zh": "读取所有下载的文件格式..."
+    },
+    "cache_loaded": {
+        "en": "Cache successfully loaded.",
+        "de": "Cache erfolgreich geladen.",
+        "es": "Cache cargado con éxito.",
+        "fr": "Cache chargé avec succès.",
+        "it": "Cache caricato con successo.",
+        "pt": "Cache carregado com sucesso.",
+        "ru": "Кэш успешно загружен.",
+        "ja": "キャッシュが正常に読み込まれました。",
+        "ko": "캐시가 성공적으로 로드되었습니다.",
+        "zh": "缓存加载成功。"
+    },
+    "cache_updated": {
+        "en": "Cache successfully saved.",
+        "de": "Cache erfolgreich gespeichert.",
+        "es": "Cache guardado con éxito.",
+        "fr": "Cache enregistré avec succès.",
+        "it": "Cache salvato con successo.",
+        "pt": "Cache salvo com sucesso.",
+        "ru": "Кэш успешно сохранён.",
+        "ja": "キャッシュが正常に保存されました。",
+        "ko": "캐시가 성공적으로 저장되었습니다.",
+        "zh": "缓存保存成功。"
+    },
+    "no_changes": {
+        "en": "No changes detected – using cached data.",
+        "de": "Keine Änderungen festgestellt – benutze den Cache.",
+        "es": "No se detectaron cambios – usando datos en caché.",
+        "fr": "Aucun changement détecté – utilisation du cache.",
+        "it": "Nessuna modifica rilevata – utilizzo dei dati cache.",
+        "pt": "Nenhuma mudança detectada – usando dados em cache.",
+        "ru": "Изменungen nicht обнаружено – используются Daten aus dem Cache.",
+        "ja": "変更は検出されませんでした – キャッシュされたデータを使用します。",
+        "ko": "변경 사항이 감지되지 않음 – 캐시된 데이터를 사용합니다.",
+        "zh": "未检测到更改 – 使用缓存数据。"
+    },
+    "changes_detected": {
+        "en": "Changes detected or no cache available – recalculating.",
+        "de": "Änderungen erkannt oder Cache nicht vorhanden – starte Berechnung.",
+        "es": "Se detectaron cambios o no hay caché verfügbar – recalculando.",
+        "fr": "Changements détectés ou cache non disponible – recalcul en cours.",
+        "it": "Modifiche rilevate o cache non disponibile – ricalcolo in corso.",
+        "pt": "Alterações detectadas ou cache indisponível – recalculando.",
+        "ru": "Изменungen erkannt oder кэш недоступен – пересчет.",
+        "ja": "変更が検出されたか、キャッシュが利用できません – 再計算中。",
+        "ko": "변경 사항이 감지되었거나 캐시가 없음 – 재계산 중.",
+        "zh": "检测到更改或无缓存可用 – 正在重新计算。"
+    },
+    "common_seq_length": {
+        "en": "Common sequence has {0} lines.",
+        "de": "Gemeinsame Sequenz hat {0} Zeilen.",
+        "es": "La secuencia común tiene {0} líneas.",
+        "fr": "La séquence commune comporte {0} lignes.",
+        "it": "La sequenza comune ha {0} righe.",
+        "pt": "A sequência comum tem {0} linhas.",
+        "ru": "Общая последовательность enthält {0} строк.",
+        "ja": "共通のシーケンスは{0}行です。",
+        "ko": "공통 시퀀스에 {0} 줄이 있습니다.",
+        "zh": "公共序列有 {0} 行。"
+    },
+    "template_written": {
+        "en": "BS4 template written to '{0}'.",
+        "de": "BS4-Code-Template wurde in '{0}' geschrieben.",
+        "es": "Plantilla BS4 escrita en '{0}'.",
+        "fr": "Template BS4 écrit dans '{0}'.",
+        "it": "Template BS4 scritto in '{0}'.",
+        "pt": "Template BS4 escrito em '{0}'.",
+        "ru": "Шаблон BS4 записан в '{0}'.",
+        "ja": "BS4テンプレートが'{0}'に書き込まれました。",
+        "ko": "BS4 템플릿이 '{0}'에 작성되었습니다.",
+        "zh": "BS4 模板已写入 '{0}'。"
+    },
+    "error_writing": {
+        "en": "Error writing to '{0}': {1}",
+        "de": "Fehler beim Schreiben in '{0}': {1}",
+        "es": "Error al escribir en '{0}': {1}",
+        "fr": "Erreur lors de l'écriture dans '{0}' : {1}",
+        "it": "Errore nella scrittura in '{0}': {1}",
+        "pt": "Erro ao escrever em '{0}': {1}",
+        "ru": "Ошибка записи in '{0}': {1}",
+        "ja": "'{0}'への書き込みエラー: {1}",
+        "ko": "'{0}'에 쓰기 오류: {1}",
+        "zh": "写入 '{0}' 时出错：{1}"
+    },
+    "elapsed_time": {
+        "en": "Total time: {0:.2f} seconds",
+        "de": "Gesamtzeit: {0:.2f} Sekunden",
+        "es": "Tiempo total: {0:.2f} segundos",
+        "fr": "Temps total : {0:.2f} secondes",
+        "it": "Tempo totale: {0:.2f} secondi",
+        "pt": "Tempo total: {0:.2f} segundos",
+        "ru": "Общее время: {0:.2f} секунд",
+        "ja": "総時間: {0:.2f}秒",
+        "ko": "총 시간: {0:.2f}초",
+        "zh": "总时间: {0:.2f} 秒"
+    },
+    "process_aborted": {
+        "en": "Process aborted by user. Exiting cleanly...",
+        "de": "Prozess vom Benutzer abgebrochen. Beende sauber...",
+        "es": "Proceso abortado por el usuario. Saliendo limpiamente...",
+        "fr": "Processus interrompu par l'utilisateur. Fermeture propre...",
+        "it": "Processo interrotto dall'utente. Uscita pulita...",
+        "pt": "Processo abortado pelo usuário. Saindo com segurança...",
+        "ru": "Процесс прерван пользователем. Завершение...",
+        "ja": "ユーザーによりプロzessが中断されました。正常に終了しています...",
+        "ko": "사용자에 의해 프로세스가 중단되었습니다. 깔끔하게 종료합니다...",
+        "zh": "进程被用户中止。正在正常退出..."
+    }
+}
+
+# Ermittelt die Systemsprache; kann per CLI überschrieben werden
+def get_language():
+    lang = None
+    try:
+        lang_tuple = locale.getdefaultlocale()
+        if lang_tuple and lang_tuple[0]:
+            lang = lang_tuple[0].split('_')[0]
+    except Exception as e:
+        logging.error(f"[LANG] Error in getdefaultlocale(): {e}")
+    if not lang or lang not in translations["header"]:
+        lang_env = os.environ.get("LANG", "en")
+        lang = lang_env.split('_')[0]
+    return lang if lang in translations["header"] else "en"
+
+LANG = get_language()
+
+# Globaler Lock für einen gemeinsamen Selenium-Driver
 selenium_lock = threading.Lock()
 
 def animate_rainbow_header(ascii_art, duration=5, frame_interval=0.15):
@@ -91,7 +244,7 @@ def check_project_existence(url, project_dir):
     domain = extract_domain(url)
     project_path = os.path.join(project_dir, domain)
     exists = os.path.exists(project_path)
-    logging.debug(f"[PROJECT] Checking project for domain '{domain}': {'found' if exists else 'not found'}.")
+    logging.debug(f"[PROJECT] Checking existence of project for domain '{domain}': {'found' if exists else 'not found'}.")
     return exists, project_path
 
 def create_project_structure(project_path):
@@ -102,7 +255,7 @@ def create_project_structure(project_path):
     return mhtml_path
 
 def prioritize_urls(url_list):
-    """[CRAWLING] Prioritizes URLs based on depth to favor shallower pages."""
+    """[CRAWLING] Prioritizes URLs based on depth (number of '/') to favor shallower pages."""
     return sorted(url_list, key=lambda url: (url.count("/"), url))
 
 def is_cloudflare_error_page(content):
@@ -112,8 +265,8 @@ def is_cloudflare_error_page(content):
     markers = ["cf-error-details", "Email Protection", "Cloudflare Ray ID:"]
     return any(marker in content for marker in markers)
 
+# Normalisiert HTML und entfernt variable Inhalte
 def prepare_for_comparison(html_content):
-    """[PARSING] Normalize HTML by removing variable content."""
     soup = BeautifulSoup(html_content, "lxml")
     for tag in soup(["script", "style"]):
         tag.decompose()
@@ -126,6 +279,7 @@ def prepare_for_comparison(html_content):
     logging.debug("[PARSING] Prepared HTML for comparison.")
     return normalized
 
+# Erweiterte get_page_content mit Timeouts und Retry
 def get_page_content(url, session, headers, selenium_only=False, shared_driver=None, no_delay=False,
                      page_timeout=10, selenium_timeout=15, retry_count=3):
     logging.debug(f"[HTTP] Requesting URL: {url}")
@@ -137,7 +291,7 @@ def get_page_content(url, session, headers, selenium_only=False, shared_driver=N
             content = response.text
             logging.debug(f"[HTTP] Received response for {url} (attempt {attempt+1}).")
             if is_cloudflare_error_page(content):
-                logging.debug(f"[HTTP] Cloudflare detected for {url}. Switching to Selenium.")
+                logging.debug(f"[HTTP] Cloudflare protection detected for {url}. Switching to Selenium.")
                 return get_content_with_selenium(url, headers, shared_driver, selenium_timeout)
             return content
         except Exception as e:
@@ -147,6 +301,7 @@ def get_page_content(url, session, headers, selenium_only=False, shared_driver=N
     logging.debug(f"[HTTP] Falling back to Selenium for {url} after {retry_count} failed attempts.")
     return get_content_with_selenium(url, headers, shared_driver, selenium_timeout)
 
+# Angepasste Selenium-Funktion, ggf. mit geteiltem Driver
 def get_content_with_selenium(url, headers, shared_driver=None, selenium_timeout=15):
     logging.debug(f"[SELENIUM] Requesting URL via Selenium: {url}")
     if shared_driver:
@@ -182,12 +337,14 @@ def get_content_with_selenium(url, headers, shared_driver=None, selenium_timeout
             logging.error(f"[SELENIUM] Error with Selenium for {url}: {e}")
             return ""
 
+# Paralleles Crawling mit Unterstützung von max_depth (-1 = infinite)
 def crawl_website(url, download_dir, strategy="bfs", sort_links=True, max_pages=-1, max_depth=-1, no_delay=False,
                   selenium_only=False, max_workers=5, page_timeout=10, selenium_timeout=15, retry_count=3,
                   keywords=None, use_keywords=False):
     domain = extract_domain(url)
     logging.info(f"[CRAWLING] Starting crawl for domain '{domain}'.")
     visited = set()
+    # to_visit enthält Tupel: (url, depth)
     to_visit = [(url, 0)]
     downloaded_files = []
     session = requests.Session()
@@ -289,7 +446,7 @@ def read_supported_files(directory):
     supported_exts = (".mhtml", ".html", ".htm")
     files = [os.path.join(directory, f) for f in os.listdir(directory) if f.lower().endswith(supported_exts)]
     documents = {}
-    for file in tqdm(files, desc=f"{Fore.GREEN}Reading downloaded file formats...{Style.RESET_ALL}", ncols=80):
+    for file in tqdm(files, desc=f"{Fore.GREEN}{translations['read_files'][LANG]}{Style.RESET_ALL}", ncols=80):
         try:
             with open(file, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
@@ -410,7 +567,7 @@ def load_cache():
         try:
             with open(CACHE_FILE, "rb") as f:
                 cache = pickle.load(f)
-            logging.debug("[CACHE] Cache successfully loaded.")
+            logging.debug(f"[CACHE] {translations['cache_loaded'][LANG]}")
             return cache
         except Exception as e:
             logging.error(f"[CACHE] Error loading cache: {e}")
@@ -420,7 +577,7 @@ def save_cache(cache):
     try:
         with open(CACHE_FILE, "wb") as f:
             pickle.dump(cache, f)
-        logging.debug("[CACHE] Cache successfully saved.")
+        logging.debug(f"[CACHE] {translations['cache_updated'][LANG]}")
     except Exception as e:
         logging.error(f"[CACHE] Error saving cache: {e}")
 
@@ -454,9 +611,22 @@ def configure_project_logging(project_path):
 
 def main(args):
     start_time = time.time()
-    # Remove language handling; script runs only in English.
+    global LANG
+    if args.lang:
+        LANG = args.lang
+
+    # Set console verbosity based on --verbose
+    verbose_mapping = {
+        "off": logging.CRITICAL + 10,  # virtually no output
+        "v": logging.WARNING,
+        "vv": logging.INFO,
+        "vvv": logging.DEBUG,
+        "infinite": logging.NOTSET
+    }
+    logging.getLogger().setLevel(verbose_mapping[args.verbose])
+    
     final_header = print_matrix_header()
-    logging.info("[MAIN] Starting BS4 Template Generator...")
+    logging.info(f"[MAIN] {translations['header'][LANG]}")
     
     project_url = input("Please enter the project URL: ").strip()
     logging.debug(f"[MAIN] Project URL entered: {project_url}")
@@ -518,7 +688,7 @@ def main(args):
         if common_seq is None:
             logging.error("[COMMON] Common sequence is None. Exiting.")
             sys.exit(1)
-        logging.debug(f"[COMMON] Common sequence has {len(common_seq)} lines.")
+        logging.debug(f"[COMMON] {translations['common_seq_length'][LANG].format(len(common_seq))}")
         variable_lines = aggregate_variable_lines(documents, common_seq)
         cache["file_info"] = update_cache_info(documents)
         cache["common_seq"] = common_seq
@@ -531,20 +701,21 @@ def main(args):
     try:
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
             f.write(bs4_template)
-        logging.info(f"[TEMPLATE] BS4 template written to '{OUTPUT_FILE}'.")
+        logging.info(f"[TEMPLATE] {translations['template_written'][LANG].format(OUTPUT_FILE)}")
     except Exception as e:
-        logging.error(f"[TEMPLATE] Error writing to '{OUTPUT_FILE}': {e}")
+        logging.error(f"[TEMPLATE] {translations['error_writing'][LANG].format(OUTPUT_FILE, e)}")
     
     elapsed = time.time() - start_time
-    logging.info(f"[MAIN] Total time: {elapsed:.2f} seconds")
-    print(f"Total time: {elapsed:.2f} seconds")
+    logging.info(f"[MAIN] {translations['elapsed_time'][LANG].format(elapsed)}")
+    print(translations["elapsed_time"][LANG].format(elapsed))
 
 if __name__ == "__main__":
-    # Initial console logging (will later be adjusted by --verbose)
+    # Initiales Logging für Konsolenausgaben (wird später anhand von --verbose angepasst)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     parser = argparse.ArgumentParser(
         description="BS4 Template Generator with advanced crawling and extraction features"
     )
+    parser.add_argument("--lang", choices=list(translations["header"].keys()), help="Language for output messages")
     parser.add_argument("--verbose", choices=["off", "v", "vv", "vvv", "infinite"], default="vvv",
                         help="Console verbosity level: off, v, vv, vvv, infinite")
     parser.add_argument("--strategy", choices=["bfs", "dfs"], default="bfs",
@@ -560,7 +731,7 @@ if __name__ == "__main__":
     parser.add_argument("--selenium-only", action="store_true",
                         help="Force using Selenium for all page fetches")
     parser.add_argument("--use-keywords", action="store_true",
-                        help="Use keywords from the keyword file to filter pages")
+                        help="Use keywords from KEYWORDS_FILE to filter pages")
     parser.add_argument("--page-timeout", type=int, default=10,
                         help="Timeout (in seconds) for HTTP requests")
     parser.add_argument("--selenium-timeout", type=int, default=15,
@@ -576,19 +747,9 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str,
                         help="Output file for the generated BS4 template")
     args = parser.parse_args()
-
-    # Set console verbosity based on --verbose
-    verbose_mapping = {
-        "off": logging.CRITICAL + 10,
-        "v": logging.WARNING,
-        "vv": logging.INFO,
-        "vvv": logging.DEBUG,
-        "infinite": logging.NOTSET
-    }
-    logging.getLogger().setLevel(verbose_mapping[args.verbose])
     
     try:
         main(args)
     except KeyboardInterrupt:
-        logging.info("[MAIN] Process aborted by user. Exiting cleanly...")
+        logging.info(f"[MAIN] {translations['process_aborted'][LANG]}")
         sys.exit(0)
