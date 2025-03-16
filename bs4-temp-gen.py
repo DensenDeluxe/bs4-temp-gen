@@ -91,7 +91,7 @@ translations = {
         "fr": "Aucun changement détecté – utilisation du cache.",
         "it": "Nessuna modifica rilevata – utilizzo dei dati cache.",
         "pt": "Nenhuma mudança detectada – usando dados em cache.",
-        "ru": "Изменungen nicht обнаружено – используются Daten aus dem Cache.",
+        "ru": "Изменений не обнаружено – используются Daten aus dem Cache.",
         "ja": "変更は検出されませんでした – キャッシュされたデータを使用します。",
         "ko": "변경 사항이 감지되지 않음 – 캐시된 데이터를 사용합니다.",
         "zh": "未检测到更改 – 使用缓存数据。"
@@ -99,11 +99,11 @@ translations = {
     "changes_detected": {
         "en": "Changes detected or no cache available – recalculating.",
         "de": "Änderungen erkannt oder Cache nicht vorhanden – starte Berechnung.",
-        "es": "Se detectaron cambios o no hay caché verfügbar – recalculando.",
+        "es": "Se detectaron cambios o no hay caché disponible – recalculando.",
         "fr": "Changements détectés ou cache non disponible – recalcul en cours.",
         "it": "Modifiche rilevate o cache non disponibile – ricalcolo in corso.",
         "pt": "Alterações detectadas ou cache indisponível – recalculando.",
-        "ru": "Изменungen erkannt oder кэш недоступен – пересчет.",
+        "ru": "Обнаружены изменения oder кэш недоступен – пересчет.",
         "ja": "変更が検出されたか、キャッシュが利用できません – 再計算中。",
         "ko": "변경 사항이 감지되었거나 캐시가 없음 – 재계산 중.",
         "zh": "检测到更改或无缓存可用 – 正在重新计算。"
@@ -115,7 +115,7 @@ translations = {
         "fr": "La séquence commune comporte {0} lignes.",
         "it": "La sequenza comune ha {0} righe.",
         "pt": "A sequência comum tem {0} linhas.",
-        "ru": "Общая последовательность enthält {0} строк.",
+        "ru": "Общая последовательность содержит {0} строк.",
         "ja": "共通のシーケンスは{0}行です。",
         "ko": "공통 시퀀스에 {0} 줄이 있습니다.",
         "zh": "公共序列有 {0} 行。"
@@ -139,7 +139,7 @@ translations = {
         "fr": "Erreur lors de l'écriture dans '{0}' : {1}",
         "it": "Errore nella scrittura in '{0}': {1}",
         "pt": "Erro ao escrever em '{0}': {1}",
-        "ru": "Ошибка записи in '{0}': {1}",
+        "ru": "Ошибка записи в '{0}': {1}",
         "ja": "'{0}'への書き込みエラー: {1}",
         "ko": "'{0}'에 쓰기 오류: {1}",
         "zh": "写入 '{0}' 时出错：{1}"
@@ -178,7 +178,7 @@ def get_language():
         if lang_tuple and lang_tuple[0]:
             lang = lang_tuple[0].split('_')[0]
     except Exception as e:
-        logging.error(f"[LANG] Error in getdefaultlocale(): {e}")
+        logging.error(f"Error in getdefaultlocale(): {e}")
     if not lang or lang not in translations["header"]:
         lang_env = os.environ.get("LANG", "en")
         lang = lang_env.split('_')[0]
@@ -227,10 +227,10 @@ def load_keywords(filename):
     if os.path.exists(filename):
         with open(filename, "r", encoding="utf-8") as f:
             keywords = [line.strip() for line in f if line.strip()]
-        logging.debug(f"[KEYWORDS] Loaded {len(keywords)} keywords from {filename}.")
+        logging.debug(f"Loaded {len(keywords)} search keywords from {filename}.")
         return keywords
     else:
-        logging.error(f"[KEYWORDS] Keywords file {filename} not found.")
+        logging.error(f"Keywords file {filename} not found.")
         return []
 
 def extract_domain(url):
@@ -244,22 +244,21 @@ def check_project_existence(url, project_dir):
     domain = extract_domain(url)
     project_path = os.path.join(project_dir, domain)
     exists = os.path.exists(project_path)
-    logging.debug(f"[PROJECT] Checking existence of project for domain '{domain}': {'found' if exists else 'not found'}.")
     return exists, project_path
 
 def create_project_structure(project_path):
     os.makedirs(project_path, exist_ok=True)
     mhtml_path = os.path.join(project_path, "downloaded_mhtml")
     os.makedirs(mhtml_path, exist_ok=True)
-    logging.debug(f"[PROJECT] Created project structure at {project_path}.")
+    logging.debug(f"Created project structure at {project_path}.")
     return mhtml_path
 
 def prioritize_urls(url_list):
-    """[CRAWLING] Prioritizes URLs based on depth (number of '/') to favor shallower pages."""
+    """Prioritizes URLs based on depth (number of '/') to favor shallower pages."""
     return sorted(url_list, key=lambda url: (url.count("/"), url))
 
 def is_cloudflare_error_page(content):
-    """[HTTP] Checks if content indicates a Cloudflare error."""
+    """Checks if the content contains typical markers of a Cloudflare error page."""
     if not content:
         return True
     markers = ["cf-error-details", "Email Protection", "Cloudflare Ray ID:"]
@@ -276,34 +275,29 @@ def prepare_for_comparison(html_content):
             if attr == "id" or attr == "style" or attr.startswith("on") or attr.startswith("data-"):
                 del tag.attrs[attr]
     normalized = re.sub(r"\d+", "0", soup.prettify())
-    logging.debug("[PARSING] Prepared HTML for comparison.")
     return normalized
 
 # Erweiterte get_page_content mit Timeouts und Retry
 def get_page_content(url, session, headers, selenium_only=False, shared_driver=None, no_delay=False,
                      page_timeout=10, selenium_timeout=15, retry_count=3):
-    logging.debug(f"[HTTP] Requesting URL: {url}")
     if selenium_only:
         return get_content_with_selenium(url, headers, shared_driver, selenium_timeout)
     for attempt in range(retry_count):
         try:
             response = session.get(url, headers=headers, timeout=page_timeout)
             content = response.text
-            logging.debug(f"[HTTP] Received response for {url} (attempt {attempt+1}).")
             if is_cloudflare_error_page(content):
-                logging.debug(f"[HTTP] Cloudflare protection detected for {url}. Switching to Selenium.")
+                logging.debug(f"Cloudflare detected for {url}. Switching to Selenium.")
                 return get_content_with_selenium(url, headers, shared_driver, selenium_timeout)
             return content
         except Exception as e:
-            logging.warning(f"[HTTP] Attempt {attempt+1} for {url} failed: {e}")
+            logging.warning(f"Attempt {attempt+1} for {url} failed: {e}")
             if not no_delay:
                 time.sleep(2)
-    logging.debug(f"[HTTP] Falling back to Selenium for {url} after {retry_count} failed attempts.")
     return get_content_with_selenium(url, headers, shared_driver, selenium_timeout)
 
 # Angepasste Selenium-Funktion, ggf. mit geteiltem Driver
 def get_content_with_selenium(url, headers, shared_driver=None, selenium_timeout=15):
-    logging.debug(f"[SELENIUM] Requesting URL via Selenium: {url}")
     if shared_driver:
         try:
             with selenium_lock:
@@ -312,10 +306,9 @@ def get_content_with_selenium(url, headers, shared_driver=None, selenium_timeout
                     lambda d: d.execute_script('return document.readyState') == 'complete'
                 )
                 content = shared_driver.page_source
-            logging.debug(f"[SELENIUM] Received content for {url} via shared driver.")
             return content
         except Exception as e:
-            logging.error(f"[SELENIUM] Error with shared driver for {url}: {e}")
+            logging.error(f"Error with shared Selenium driver for {url}: {e}")
             return ""
     else:
         try:
@@ -331,10 +324,9 @@ def get_content_with_selenium(url, headers, shared_driver=None, selenium_timeout
             )
             content = driver.page_source
             driver.quit()
-            logging.debug(f"[SELENIUM] Received content for {url} via temporary driver.")
             return content
         except Exception as e:
-            logging.error(f"[SELENIUM] Error with Selenium for {url}: {e}")
+            logging.error(f"Error with Selenium for {url}: {e}")
             return ""
 
 # Paralleles Crawling mit Unterstützung von max_depth (-1 = infinite)
@@ -342,7 +334,6 @@ def crawl_website(url, download_dir, strategy="bfs", sort_links=True, max_pages=
                   selenium_only=False, max_workers=5, page_timeout=10, selenium_timeout=15, retry_count=3,
                   keywords=None, use_keywords=False):
     domain = extract_domain(url)
-    logging.info(f"[CRAWLING] Starting crawl for domain '{domain}'.")
     visited = set()
     # to_visit enthält Tupel: (url, depth)
     to_visit = [(url, 0)]
@@ -366,9 +357,8 @@ def crawl_website(url, download_dir, strategy="bfs", sort_links=True, max_pages=
         options.add_argument(f'user-agent={headers["User-Agent"]}')
         try:
             shared_driver = webdriver.Chrome(options=options)
-            logging.info("[SELENIUM] Shared Selenium driver initialized.")
         except Exception as e:
-            logging.error(f"[SELENIUM] Error initializing shared driver: {e}")
+            logging.error(f"Error initializing shared Selenium driver: {e}")
             selenium_only = False
 
     pbar = tqdm(desc=f"{Fore.GREEN}Downloading pages{Style.RESET_ALL}", ncols=80)
@@ -394,26 +384,26 @@ def crawl_website(url, download_dir, strategy="bfs", sort_links=True, max_pages=
                 try:
                     content = future.result()
                 except Exception as exc:
-                    logging.error(f"[CRAWLING] Error processing {current_url}: {exc}")
+                    logging.error(f"Error processing {current_url}: {exc}")
                     continue
                 if not no_delay:
                     time.sleep(random.uniform(1, 3))
                 if content and not is_cloudflare_error_page(content):
                     if use_keywords and keywords:
                         if not any(kw.lower() in content.lower() for kw in keywords):
-                            logging.debug(f"[CRAWLING] Skipping {current_url} due to keyword filter.")
+                            logging.debug(f"Skipping {current_url} due to keyword filter.")
                             continue
                     file_index = len(downloaded_files) + 1
                     filename = os.path.join(download_dir, f"page_{file_index}.mhtml")
                     try:
                         with open(filename, "w", encoding="utf-8") as f:
                             f.write(content)
-                        logging.debug(f"[CRAWLING] Saved {current_url} as {filename}.")
                     except Exception as e:
-                        logging.error(f"[CRAWLING] Error writing file {filename}: {e}")
+                        logging.error(f"Error writing file {filename}: {e}")
                         continue
                     downloaded_files.append(filename)
                     pbar.update(1)
+                    logging.debug(f"Downloaded {current_url} to {filename}.")
                     soup = BeautifulSoup(content, "lxml")
                     new_links = []
                     for link in soup.find_all("a", href=True):
@@ -426,23 +416,20 @@ def crawl_website(url, download_dir, strategy="bfs", sort_links=True, max_pages=
                     for link in new_links:
                         if max_depth == -1 or current_depth + 1 <= max_depth:
                             to_visit.append((link, current_depth + 1))
-                    logging.debug(f"[CRAWLING] {len(new_links)} new links found at depth {current_depth+1}.")
                     if max_pages != -1 and len(downloaded_files) >= max_pages:
                         break
                 else:
-                    logging.info(f"[CRAWLING] Ignored {current_url} due to Cloudflare error or empty content.")
+                    logging.info(f"Ignored Cloudflare error page or empty content from {current_url}.")
     pbar.close()
     if shared_driver:
         try:
             shared_driver.quit()
-            logging.info("[SELENIUM] Shared Selenium driver terminated.")
         except Exception as e:
-            logging.error(f"[SELENIUM] Error quitting shared driver: {e}")
-    logging.info(f"[CRAWLING] Crawl complete. {len(downloaded_files)} pages downloaded.")
+            logging.error(f"Error quitting shared Selenium driver: {e}")
     return downloaded_files
 
 def read_supported_files(directory):
-    logging.info(f"[PARSING] Reading supported files from '{directory}'.")
+    logging.debug(f"Reading supported file formats from '{directory}'.")
     supported_exts = (".mhtml", ".html", ".htm")
     files = [os.path.join(directory, f) for f in os.listdir(directory) if f.lower().endswith(supported_exts)]
     documents = {}
@@ -453,14 +440,13 @@ def read_supported_files(directory):
                 normalized_html = prepare_for_comparison(content)
                 html_lines = normalized_html.splitlines()
                 documents[file] = html_lines
-            logging.debug(f"[PARSING] File '{file}' processed ({len(html_lines)} lines).")
+            logging.debug(f"File '{file}' read successfully ({len(html_lines)} lines).")
         except Exception as e:
-            logging.error(f"[PARSING] Error reading '{file}': {e}")
-    logging.info(f"[PARSING] {len(documents)} files successfully read.")
+            logging.error(f"Error reading '{file}': {e}")
     return documents
 
 def normalize_html_lines(lines):
-    """[PARSING] Normalizes HTML lines by stripping whitespace and omitting empty lines."""
+    """Normalizes HTML lines by stripping whitespace and omitting empty lines."""
     return [line.strip() for line in lines if line.strip()]
 
 def lcs(seq1, seq2):
@@ -486,31 +472,27 @@ def lcs(seq1, seq2):
     return list(reversed(lcs_seq))
 
 def compute_common_sequence(documents):
-    logging.info("[COMMON] Computing common sequence from documents.")
     common_seq = None
     for filename, lines in documents.items():
         normalized = normalize_html_lines(lines)
         if common_seq is None:
             common_seq = normalized
-            logging.debug(f"[COMMON] Started common sequence with '{filename}'.")
+            logging.debug(f"Started with file '{filename}' as basis.")
         else:
             common_seq = lcs(common_seq, normalized)
-            logging.debug(f"[COMMON] Updated common sequence after '{filename}' to {len(common_seq)} lines.")
-    logging.info(f"[COMMON] Common sequence computed with {len(common_seq)} lines.")
+            logging.debug(f"After processing '{filename}', common sequence length: {len(common_seq)} lines.")
     return common_seq
 
 def compute_variable_lines(doc_lines, common_seq):
     diff = difflib.ndiff(common_seq, doc_lines)
     variable_lines = [line[2:] for line in diff if line.startswith("+ ")]
-    logging.debug(f"[COMMON] Computed {len(variable_lines)} variable lines.")
     return variable_lines
 
 def aggregate_variable_lines(documents, common_seq):
-    logging.info("[COMMON] Aggregating variable lines from documents.")
     variable_all = []
     for filename, lines in documents.items():
         var_lines = compute_variable_lines(lines, common_seq)
-        logging.debug(f"[COMMON] {filename}: {len(var_lines)} variable lines found.")
+        logging.debug(f"{filename}: {len(var_lines)} variable lines found.")
         variable_all.extend(var_lines)
     seen = set()
     variable_ordered = []
@@ -518,11 +500,10 @@ def aggregate_variable_lines(documents, common_seq):
         if line not in seen and line.strip():
             seen.add(line)
             variable_ordered.append(line)
-    logging.info(f"[COMMON] Aggregated {len(variable_ordered)} unique variable lines.")
+    logging.debug(f"Aggregated {len(variable_ordered)} unique variable lines.")
     return variable_ordered
 
 def generate_bs4_template(common_seq, variable_lines):
-    logging.info(f"[TEMPLATE] Generating BS4 template with {len(common_seq)} common and {len(variable_lines)} variable lines.")
     template = '''"""
 Automatically generated BS4 template
 
@@ -567,25 +548,24 @@ def load_cache():
         try:
             with open(CACHE_FILE, "rb") as f:
                 cache = pickle.load(f)
-            logging.debug(f"[CACHE] {translations['cache_loaded'][LANG]}")
+            logging.debug(translations["cache_loaded"][LANG])
             return cache
         except Exception as e:
-            logging.error(f"[CACHE] Error loading cache: {e}")
+            logging.error(f"Error loading cache: {e}")
     return {}
 
 def save_cache(cache):
     try:
         with open(CACHE_FILE, "wb") as f:
             pickle.dump(cache, f)
-        logging.debug(f"[CACHE] {translations['cache_updated'][LANG]}")
+        logging.debug(translations["cache_updated"][LANG])
     except Exception as e:
-        logging.error(f"[CACHE] Error saving cache: {e}")
+        logging.error(f"Error saving cache: {e}")
 
 def files_have_changed(documents, cached_info):
     for filepath in documents.keys():
         mtime = os.path.getmtime(filepath)
         if filepath not in cached_info or cached_info[filepath] != mtime:
-            logging.debug(f"[CACHE] File changed: {filepath}")
             return True
     return False
 
@@ -593,11 +573,10 @@ def update_cache_info(documents):
     cache_info = {}
     for filepath in documents.keys():
         cache_info[filepath] = os.path.getmtime(filepath)
-    logging.debug("[CACHE] Cache info updated.")
     return cache_info
 
 def configure_project_logging(project_path):
-    """[LOG] Configures logging to store the log file within the project folder."""
+    """Configures logging to store the log file within the project folder."""
     log_path = os.path.join(project_path, "log.txt")
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
@@ -607,7 +586,7 @@ def configure_project_logging(project_path):
         format="%(asctime)s - %(levelname)s - %(message)s",
         filemode="a"
     )
-    logging.debug("[LOG] Project logging configured.")
+    logging.debug("Project logging configured.")
 
 def main(args):
     start_time = time.time()
@@ -617,7 +596,7 @@ def main(args):
 
     # Set console verbosity based on --verbose
     verbose_mapping = {
-        "off": logging.CRITICAL + 10,  # virtually no output
+        "off": logging.CRITICAL + 10,  # disables almost all logs
         "v": logging.WARNING,
         "vv": logging.INFO,
         "vvv": logging.DEBUG,
@@ -626,10 +605,10 @@ def main(args):
     logging.getLogger().setLevel(verbose_mapping[args.verbose])
     
     final_header = print_matrix_header()
-    logging.info(f"[MAIN] {translations['header'][LANG]}")
+    logging.info(translations["header"][LANG])
     
     project_url = input("Please enter the project URL: ").strip()
-    logging.debug(f"[MAIN] Project URL entered: {project_url}")
+    logging.debug(f"User entered project URL: {project_url}")
     exists, project_path = check_project_existence(project_url, args.project_dir)
     
     download_dir = os.path.join(project_path, "downloaded_mhtml")
@@ -653,11 +632,10 @@ def main(args):
             use_keywords=args.use_keywords
         )
         if not downloaded_files:
-            logging.error("[MAIN] No pages downloaded. Exiting.")
+            logging.error("No pages downloaded. Exiting.")
             sys.exit(1)
     else:
         downloaded_files = [os.path.join(download_dir, f) for f in os.listdir(download_dir)]
-        logging.info(f"[MAIN] Project already exists; {len(downloaded_files)} pages found in {download_dir}.")
     
     configure_project_logging(project_path)
     global CACHE_FILE, OUTPUT_FILE
@@ -665,12 +643,12 @@ def main(args):
     OUTPUT_FILE = args.output if args.output else os.path.join(project_path, "bs4code.txt")
     
     if not os.path.exists(download_dir):
-        logging.error("[MAIN] Download directory not found in project. Exiting.")
+        logging.error("Directory not found in project. Exiting.")
         sys.exit(1)
     
     documents = read_supported_files(download_dir)
     if not documents:
-        logging.error("[PARSING] No supported files found. Exiting.")
+        logging.error("No supported files found. Exiting.")
         sys.exit(1)
     
     cache = load_cache() if not args.no_cache else {}
@@ -679,16 +657,16 @@ def main(args):
     cached_variables = cache.get("variable_lines", None)
     
     if cached_common is not None and not files_have_changed(documents, cached_info):
-        logging.debug("[CACHE] No changes detected; using cached data.")
+        logging.debug(translations["no_changes"][LANG])
         common_seq = cached_common
         variable_lines = cached_variables
     else:
-        logging.debug("[CACHE] Changes detected or no cache available; recalculating common sequence.")
+        logging.debug(translations["changes_detected"][LANG])
         common_seq = compute_common_sequence(documents)
         if common_seq is None:
-            logging.error("[COMMON] Common sequence is None. Exiting.")
+            logging.error("Common sequence is None. Exiting.")
             sys.exit(1)
-        logging.debug(f"[COMMON] {translations['common_seq_length'][LANG].format(len(common_seq))}")
+        logging.debug(translations["common_seq_length"][LANG].format(len(common_seq)))
         variable_lines = aggregate_variable_lines(documents, common_seq)
         cache["file_info"] = update_cache_info(documents)
         cache["common_seq"] = common_seq
@@ -696,17 +674,17 @@ def main(args):
         if not args.no_cache:
             save_cache(cache)
     
-    logging.debug("[TEMPLATE] Generating BS4 code template.")
+    logging.debug("Generating BS4 code template.")
     bs4_template = generate_bs4_template(common_seq, variable_lines)
     try:
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
             f.write(bs4_template)
-        logging.info(f"[TEMPLATE] {translations['template_written'][LANG].format(OUTPUT_FILE)}")
+        logging.debug(translations["template_written"][LANG].format(OUTPUT_FILE))
     except Exception as e:
-        logging.error(f"[TEMPLATE] {translations['error_writing'][LANG].format(OUTPUT_FILE, e)}")
+        logging.error(translations["error_writing"][LANG].format(OUTPUT_FILE, e))
     
     elapsed = time.time() - start_time
-    logging.info(f"[MAIN] {translations['elapsed_time'][LANG].format(elapsed)}")
+    logging.debug(translations["elapsed_time"][LANG].format(elapsed))
     print(translations["elapsed_time"][LANG].format(elapsed))
 
 if __name__ == "__main__":
@@ -751,5 +729,5 @@ if __name__ == "__main__":
     try:
         main(args)
     except KeyboardInterrupt:
-        logging.info(f"[MAIN] {translations['process_aborted'][LANG]}")
+        logging.info(translations["process_aborted"][LANG])
         sys.exit(0)
