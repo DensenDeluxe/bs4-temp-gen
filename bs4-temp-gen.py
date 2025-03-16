@@ -36,13 +36,25 @@ DEFAULT_KEYWORDS_FILE = "bs4-search-items.txt"
 # Global lock for shared Selenium driver
 selenium_lock = threading.Lock()
 
+def animate_rainbow_header(ascii_art, duration=5, frame_interval=0.15):
+    rainbow_colors = [Fore.RED, Fore.YELLOW, Fore.GREEN, Fore.CYAN, Fore.BLUE, Fore.MAGENTA]
+    total_frames = int(duration / frame_interval)
+    ascii_lines = ascii_art.splitlines()
+    for frame in range(total_frames):
+        os.system("cls" if os.name == "nt" else "clear")
+        current_frame = []
+        for idx, line in enumerate(ascii_lines):
+            colored_line = ""
+            for ch in line:
+                color_index = (idx + frame) % len(rainbow_colors)
+                colored_line += rainbow_colors[color_index] + ch
+            current_frame.append(colored_line + Style.RESET_ALL)
+        print("\n".join(current_frame))
+        time.sleep(frame_interval)
+    return "\n".join(current_frame)
+
 def print_matrix_header():
-    """
-    Always prints the fixed ASCII art with a rainbow effect that can never be disabled.
-    Der Regenbogeneffekt wird per Zeichen erzielt.
-    """
     ascii_art = """
-    
 888                   d8888         888                                                                     
 888                  d8P888         888                                                                     
 888                 d8P 888         888                                                                     
@@ -53,20 +65,10 @@ def print_matrix_header():
 88888P"   88888P'       888          "Y888 "Y8888  888  888  888 88888P"          "Y88888  "Y8888  888  888 
                                                                  888                  888                   
                                                                  888             Y8b d88P                   
-                                                                 888              "Y88P"  
+                                                                 888              "Y88P"                   
 """
-    # Definiere die Farben für den Regenbogeneffekt
-    rainbow_colors = [Fore.RED, Fore.YELLOW, Fore.GREEN, Fore.CYAN, Fore.BLUE, Fore.MAGENTA]
-    colored_lines = []
-    # Wende den Regenbogeneffekt zeichenweise an
-    for line in ascii_art.splitlines():
-        colored_line = ""
-        for i, char in enumerate(line):
-            colored_line += rainbow_colors[i % len(rainbow_colors)] + char
-        colored_lines.append(colored_line)
-    colored_ascii_art = "\n".join(colored_lines)
-    print(colored_ascii_art)
-    return colored_ascii_art
+    final_ascii_art = animate_rainbow_header(ascii_art, duration=5, frame_interval=0.15)
+    return final_ascii_art
 
 def load_keywords(filename):
     if os.path.exists(filename):
@@ -452,8 +454,8 @@ def configure_project_logging(project_path):
 
 def main(args):
     start_time = time.time()
-    # Print the fixed ASCII art at the very top with a rainbow effect that cannot be disabled
-    print_matrix_header()
+    # Remove language handling; script runs only in English.
+    final_header = print_matrix_header()
     logging.info("[MAIN] Starting BS4 Template Generator...")
     
     project_url = input("Please enter the project URL: ").strip()
