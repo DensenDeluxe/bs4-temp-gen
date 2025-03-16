@@ -1,32 +1,41 @@
+# Required Python Packages for bs4-temp-gen
+
 # Core dependencies
-beautifulsoup4==4.12.2  # HTML Parsing Library
-requests==2.31.0        # HTTP Requests Library
-tqdm==4.66.1            # Progress Bar for CLI
-colorama==0.4.6         # Colored Terminal Output
-urllib3==2.0.7          # URL Handling Utility
+requests==2.31.0  # HTTP requests handling
+urllib3==2.0.4  # Enhanced HTTP connections
+beautifulsoup4==4.12.2  # HTML parsing and processing
+lxml==4.9.3  # High-performance XML and HTML parser
 
-# Web scraping dependencies
-selenium==4.16.0        # Web Scraping Automation
-webdriver-manager==4.0.1 # Auto-install ChromeDriver
+# Web Scraping Enhancements
+selenium==4.11.2  # Web automation for handling dynamic content
+webdriver-manager==4.0.1  # Automatic driver management for Selenium
 
-# Data handling & processing
-pickle-mixin==1.0.2     # Data Serialization
-lxml==4.9.3             # XML and HTML Parsing
-html5lib==1.1           # HTML Parsing Alternative
+# Asynchronous and Concurrent Execution
+concurrent-log-handler==0.9.25  # Improved logging in multi-threaded environments
 
-# Logging and Debugging
-logging==0.5.1.2        # Logging Utility
-retrying==1.3.4         # Retry Mechanism for Requests
-difflib==0.1            # HTML Structure Comparison
+# CLI Enhancements
+colorama==0.4.6  # Colored terminal output
+tqdm==4.66.1  # Progress bar for long-running operations
 
-# System Utilities
-os-sys==2.1.4           # OS and System Path Handling
-time==1.8               # Time Manipulation
-locale==2.5.0           # Language Support
+# Parsing and Data Handling
+regex==2023.8.8  # Extended regular expressions for parsing
+html5lib==1.1  # Alternative HTML parser
 
-# URL Parsing
-urllib3==2.0.7          # URL Handling Utility
-requests-toolbelt==0.10.1 # Advanced Request Handling
+# Additional Utilities
+pytz==2023.3  # Timezone handling
+idna==3.4  # Internationalized domain names processing
+chardet==5.1.0  # Encoding detection
+certifi==2023.7.22  # Certificate validation
 
-# Optional for CLI enhancements
-rich==13.7.0            # Beautiful CLI Formatting
+# Development and Debugging
+pytest==7.4.2  # Testing framework
+pytest-mock==3.11.1  # Mocking capabilities for tests
+loguru==0.7.0  # Advanced logging framework
+
+# Optional dependencies (uncomment to install optional features)
+# aiohttp==3.8.5  # Asynchronous HTTP client (for potential async enhancements)
+# playwright==1.36.0  # Headless browser automation (alternative to Selenium)
+# scrapy==2.9.0  # Full-fledged web scraping framework
+
+# Version constraints ensure compatibility across environments
+
